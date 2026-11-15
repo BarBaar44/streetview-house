@@ -5,8 +5,7 @@
  * the big front window. Whoever is home stands behind the window; the room
  * light and the door light are on while anyone is home (or follow real lights);
  * the door light pulses while someone is on the way home; the cat comes and goes.
- * Next to the picture: one row per person with presence, since when, and small
- * phone badges (battery low, charging).
+ * The picture is the whole card; hovering a person shows presence and since when.
  *
  * Read only: the card calls no services. Taps go through Home Assistant's own
  * action handler (hass-action), more-info of the person by default.
@@ -22,7 +21,6 @@ const VERSION = "0.1.0";
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
 const SV_TICK_MS = 60000; // "since" texts and cat visits follow the clock
-const SV_NARROW_PX = 440; // below this card width the picture drops the door
 const SV_CAT_SLOT_MS = 15 * 60000; // the cat decides every quarter of an hour
 const SV_MAX_PEOPLE = 4; // the window has room for four
 
@@ -30,41 +28,30 @@ const SV_MAX_PEOPLE = 4; // the window has room for four
 const SV_PEOPLE = [
   {
     entity: "person.bart_baars", name: "Bart", portrait: "/local/streetview-house/bart.webp", height: 1,
-    battery: "sensor.pixel_7_battery_level", charging: "sensor.pixel_7_battery_state",
     distance: "sensor.home_bart_baars_distance", direction: "sensor.home_bart_baars_direction_of_travel",
   },
   {
     entity: "person.gijs_baars", name: "Gijs", portrait: "/local/streetview-house/gijs.webp", height: 0.98,
-    battery: "sensor.pixel_6a_battery_level", charging: "sensor.pixel_6a_battery_state",
     distance: null, direction: null,
   },
   {
     entity: "person.marjolijn_bongers", name: "Marjolijn", portrait: "/local/streetview-house/marjolijn.webp", height: 0.93,
-    battery: "sensor.pixel_7_pro_battery_level", charging: "sensor.pixel_7_pro_battery_state",
     distance: null, direction: null,
   },
   {
     entity: "person.tim_baars", name: "Tim", portrait: "/local/streetview-house/tim.webp", height: 0.88,
-    battery: null, charging: null, distance: null, direction: null,
+    distance: null, direction: null,
   },
 ];
-const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "battery", "charging", "distance", "direction"];
-const SV_PERSON_ROLES = ["battery", "charging", "distance", "direction"];
+const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "direction"];
+const SV_PERSON_ROLES = ["distance", "direction"];
 
 const SV_DEFAULTS = {
-  battery_low: 20, // % : below this, and not charging, the phone gets a red badge
   cat: true,
   entities: {
     room_light: null, // light in the front room; null: on while anyone is home
     door_light: null, // hall light behind the door grille; null: on while anyone is home
   },
-};
-
-/* colors key -> CSS variable and default. */
-const SV_COLORS = {
-  coming: ["--sv-coming", "var(--orange-color, #ff9800)"],
-  low: ["--sv-low", "var(--error-color, #db4437)"],
-  charge: ["--sv-charging", "var(--warning-color, #ffa600)"],
 };
 
 const SV_BAD = ["unknown", "unavailable", "none", ""];
@@ -120,8 +107,13 @@ function svScene(o, id) {
   let s = "", defs = "";
 
   // brick wall (street side: darker brown)
-  s += poly(rect(0, 4.4, 0.5, 2.62), "#7d5d4b", S);
-  for (let y = 0.56; y < 2.62; y += 0.14) s += line([0, y, 0], [4.4, y, 0], 'stroke="#9a7a64" stroke-width=".45"');
+  // brick wall, wider than any view so a wide card shows more wall
+  // (taller than the view too, so the slanted top and bottom never leave a gap)
+  s += poly(rect(-6, 10, 0.5, 3.6), "#7d5d4b");
+  for (let y = 0.56; y < 3.6; y += 0.14) s += line([-6, y, 0], [10, y, 0], 'stroke="#9a7a64" stroke-width=".45"');
+  s += poly(rect(-6, 10, -0.6, 0.5, 0.001), "#5a4236");   // darker plinth along the pavement
+  for (let y = 0.36; y > -0.6; y -= 0.14) s += line([-6, y, 0.001], [10, y, 0.001], 'stroke="#6b5144" stroke-width=".45"');
+  s += line([-6, 0.5, 0.002], [10, 0.5, 0.002], 'stroke="#111" stroke-width="1.3"');
 
   // ---- arched front door: brick arch, cream frame, dark plank door, grille window ----
   const arch = (x0, x1, y0, ys, z, n = 18) => {
@@ -183,14 +175,14 @@ function svScene(o, id) {
     const cx = x0 + slot * (p.i + 0.5);
     if (!p.pic) { // no picture: a plain head and shoulders
       const h = bh * 0.5 * p.height, y = by + bh - h;
-      return `<g class="person" data-i="${p.i}"><path d="M${F(cx - slot * 0.42)} ${F(by + bh + 2)}V${F(y + h * 0.66)}Q${F(cx - slot * 0.42)} ${F(y + h * 0.52)} ${F(cx - slot * 0.2)} ${F(y + h * 0.52)}H${F(cx + slot * 0.2)}Q${F(cx + slot * 0.42)} ${F(y + h * 0.52)} ${F(cx + slot * 0.42)} ${F(y + h * 0.66)}V${F(by + bh + 2)}Z" fill="${p.color}" stroke="#111" stroke-width=".8"/>`
+      return `<g class="person" data-i="${p.i}"><title>${svEsc(p.title || "")}</title><path d="M${F(cx - slot * 0.42)} ${F(by + bh + 2)}V${F(y + h * 0.66)}Q${F(cx - slot * 0.42)} ${F(y + h * 0.52)} ${F(cx - slot * 0.2)} ${F(y + h * 0.52)}H${F(cx + slot * 0.2)}Q${F(cx + slot * 0.42)} ${F(y + h * 0.52)} ${F(cx + slot * 0.42)} ${F(y + h * 0.66)}V${F(by + bh + 2)}Z" fill="${p.color}" stroke="#111" stroke-width=".8"/>`
         + `<ellipse cx="${F(cx)}" cy="${F(y + h * 0.28)}" rx="${F(h * 0.17)}" ry="${F(h * 0.22)}" fill="#e9b896" stroke="#111" stroke-width=".8"/></g>`;
     }
     const keep = 0.74; // the middle 74 % of the portrait: shoulders trimmed, so neighbours do not overlap
     const h = Math.min(bh * 0.66, slot * 0.96 * p.pic.h / (p.pic.w * keep)) * p.height, w = h * p.pic.w / p.pic.h;
     const y = by + bh - h + bh * 0.02, cid = `${id}-pc${p.i}`;
     defs += `<clipPath id="${cid}"><rect x="${F(cx - w * keep / 2)}" y="${F(y - 2)}" width="${F(w * keep)}" height="${F(h + 4)}" rx="${F(w * 0.06)}"/></clipPath>`;
-    return `<image class="person" data-i="${p.i}" href="${svEsc(p.pic.url)}" x="${F(cx - w / 2)}" y="${F(y)}" width="${F(w)}" height="${F(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>`;
+    return `<g class="person" data-i="${p.i}"><title>${svEsc(p.title || "")}</title><image href="${svEsc(p.pic.url)}" x="${F(cx - w / 2)}" y="${F(y)}" width="${F(w)}" height="${F(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/></g>`;
   };
   r += o.people.map(one).join("");
   if (lit) r += `<rect x="${F(bx)}" y="${F(by)}" width="${F(bw)}" height="${F(bh)}" fill="#ffd54f" opacity=".14"/>`;
@@ -271,32 +263,13 @@ function svScene(o, id) {
 /* ---- styles --------------------------------------------------------------- */
 
 const SV_STYLE = `
-  :host {
-${Object.values(SV_COLORS).map(([v, d]) => `    ${v}: ${d};`).join("\n")}
-  }
   ha-card {
-    height: 100%; box-sizing: border-box; padding: 4px 12px 4px 6px; overflow: hidden;
-    display: flex; align-items: center; gap: 12px;
+    height: 100%; box-sizing: border-box; overflow: hidden; position: relative;
     user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   }
-  .pic { flex: none; height: 100%; max-height: 176px; max-width: 66%; position: relative; }
+  .pic { position: absolute; inset: 0; }
   .pic svg { width: 100%; height: 100%; display: block; }
   .person { cursor: pointer; }
-
-  .list { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
-  .row { display: flex; flex-direction: column; min-width: 0; cursor: pointer; border-radius: 6px; }
-  .row:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-  .top { display: flex; align-items: center; gap: 5px; min-width: 0; }
-  .name { font-size: 14px; font-weight: 500; line-height: 17px; color: var(--primary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row.away .name { color: var(--secondary-text-color); font-weight: 400; }
-  .line { font-size: 12px; line-height: 16px; min-height: 16px; color: var(--secondary-text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .line.coming { color: var(--sv-coming); }
-  .badge { flex: none; width: 16px; height: 16px; border-radius: 8px; display: none; align-items: center; justify-content: center;
-    color: var(--b); background: color-mix(in srgb, var(--b) 24%, var(--card-background-color, #fff)); }
-  .badge.show { display: flex; }
-  .badge ha-icon { --mdc-icon-size: 11px; width: 11px; height: 11px; display: flex; }
-  .badge.low { --b: var(--sv-low); }
-  .badge.charging { --b: var(--sv-charging); }
 
   .doorlight.pulse { animation: sv-door 2.4s ease-in-out infinite; }
   @keyframes sv-door { 50% { opacity: .45; } }
@@ -343,10 +316,10 @@ class StreetviewHouse extends HTMLElement {
 
   setConfig(config) {
     const c = config || {};
-    const known = ["type", "people", "entities", "battery_low", "cat", "tap_action", "hold_action", "colors",
+    const known = ["type", "people", "entities", "cat", "tap_action", "hold_action",
       "grid_options", "layout_options", "view_layout", "visibility", "card_mod"];
     for (const k of Object.keys(c)) {
-      if (!known.includes(k)) throw new Error(`Unknown option '${k}'. Known: ${known.slice(1, 8).join(", ")}`);
+      if (!known.includes(k)) throw new Error(`Unknown option '${k}'. Known: ${known.slice(1, 6).join(", ")}`);
     }
     // people: a list; a known entity takes Bb's defaults for the keys it leaves out, null switches a role off
     let list = SV_PEOPLE;
@@ -383,10 +356,7 @@ class StreetviewHouse extends HTMLElement {
       if (!(k in SV_DEFAULTS.entities)) throw new Error(`entities: unknown role '${k}'. Known: ${Object.keys(SV_DEFAULTS.entities).join(", ")}`);
       if (v !== null && !svIsId(v)) throw new Error(`entities.${k}: '${v}' is not an entity id (null switches it off)`);
     }
-    const low = c.battery_low == null ? SV_DEFAULTS.battery_low : svNum(c.battery_low);
-    if (low === null || low < 0 || low > 100) throw new Error("battery_low must be a number from 0 to 100");
     if (c.cat != null && typeof c.cat !== "boolean") throw new Error("cat must be true or false");
-    if (c.colors != null && (typeof c.colors !== "object" || Array.isArray(c.colors))) throw new Error("colors must be a map, e.g. coming: orange");
     for (const k of ["tap_action", "hold_action"]) {
       if (c[k] != null && (typeof c[k] !== "object" || Array.isArray(c[k]) || !c[k].action)) {
         throw new Error(`${k} must be an action, e.g. action: more-info`);
@@ -396,13 +366,10 @@ class StreetviewHouse extends HTMLElement {
     this._config = {
       people,
       entities: { ...SV_DEFAULTS.entities, ...ent },
-      batteryLow: low,
       cat: c.cat == null ? SV_DEFAULTS.cat : c.cat,
       tap_action: c.tap_action || { action: "more-info" },
       hold_action: c.hold_action || { action: "none" },
-      colors: c.colors || {},
     };
-    this._applyColors(this._config.colors);
     const ids = [];
     for (const p of people) for (const k of ["entity", ...SV_PERSON_ROLES]) if (p[k]) ids.push(p[k]);
     for (const v of Object.values(this._config.entities)) if (v) ids.push(v);
@@ -411,17 +378,6 @@ class StreetviewHouse extends HTMLElement {
     this._build();
     for (const p of people) if (p.portrait) this._loadImage(p.portrait);
     if (this._hass) this._update();
-  }
-
-  _applyColors(colors) {
-    Object.keys(colors).forEach((k) => {
-      if (!SV_COLORS[k]) console.warn(`streetview-house: unknown colors key "${k}". Known: ${Object.keys(SV_COLORS).join(", ")}`);
-    });
-    Object.entries(SV_COLORS).forEach(([k, [v]]) => {
-      const val = typeof colors[k] === "string" && colors[k].trim() ? colors[k].trim() : null;
-      if (val) this.style.setProperty(v, val);
-      else this.style.removeProperty(v);
-    });
   }
 
   set hass(hass) {
@@ -445,8 +401,8 @@ class StreetviewHouse extends HTMLElement {
     this._tick = setInterval(() => this._update(), SV_TICK_MS);
     if (typeof ResizeObserver !== "undefined" && this._el && !this._ro) {
       this._ro = new ResizeObserver((entries) => {
-        const w = entries[0] && entries[0].contentRect.width;
-        if (w) this._setNarrow(w < SV_NARROW_PX);
+        const r = entries[0] && entries[0].contentRect;
+        if (r && r.width && r.height) this._fit(r.width, r.height);
       });
       this._ro.observe(this._el.card);
     }
@@ -474,24 +430,15 @@ class StreetviewHouse extends HTMLElement {
 
   _build() {
     if (this._ro) { this._ro.disconnect(); this._ro = null; }
-    const rows = this._config.people.map((p, i) => `
-      <div class="row" data-i="${i}" role="button" tabindex="0">
-        <div class="top"><span class="name"></span>
-          <span class="badge low"><ha-icon icon="mdi:battery-alert-variant-outline"></ha-icon></span>
-          <span class="badge charging"><ha-icon icon="mdi:lightning-bolt"></ha-icon></span></div>
-        <span class="line"></span>
-      </div>`).join("");
     this.shadowRoot.innerHTML = `
       <style>${SV_STYLE}</style>
       <ha-card>
-        <div class="pic" role="img"><svg xmlns="http://www.w3.org/2000/svg"></svg></div>
-        <div class="list">${rows}</div>
+        <div class="pic" role="img"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice"></svg></div>
       </ha-card>`;
     const $ = (s) => this.shadowRoot.querySelector(s);
-    this._el = { card: $("ha-card"), pic: $(".pic"), svg: $("svg"), rows: [...this.shadowRoot.querySelectorAll(".row")] };
+    this._el = { card: $("ha-card"), pic: $(".pic"), svg: $("svg") };
     this._sceneKey = null;
-    this._setNarrow(this._narrow, true);
-    this._el.rows.forEach((row, i) => this._bindPress(row, () => i));
+    this._fit(this._size ? this._size[0] : 520, this._size ? this._size[1] : 184, true);
     this._bindPress(this._el.pic, (e) => {
       const t = e.target && e.target.closest ? e.target.closest("[data-i]") : null;
       return t ? Number(t.getAttribute("data-i")) : null;
@@ -499,12 +446,22 @@ class StreetviewHouse extends HTMLElement {
     if (this.isConnected) this.connectedCallback();
   }
 
-  _setNarrow(narrow, force) {
-    if (narrow === this._narrow && !force) return;
-    this._narrow = narrow;
-    const vb = narrow ? SV.narrow : SV.wide;
+  /*
+   * The picture fills the card. A card wider than the facade shows more wall on
+   * both sides; a narrower one keeps the window and drops the door first.
+   */
+  _fit(w, h, force) {
+    const key = `${Math.round(w)}x${Math.round(h)}`;
+    if (key === this._fitKey && !force) return;
+    this._fitKey = key;
+    this._size = [w, h];
+    const a = w / h;
+    const [x0, y0, W, H] = SV.wide;
+    const right = x0 + W, min = SV.narrow[2];
+    let vb;
+    if (a >= W / H) { const nw = H * a; vb = [x0 - (nw - W) / 2, y0, nw, H]; }
+    else { const nw = Math.max(min, H * a); vb = [right - nw, y0, nw, H]; }
     this._el.svg.setAttribute("viewBox", vb.map(svF).join(" "));
-    this._el.pic.style.aspectRatio = svF(vb[2] / vb[3]);
   }
 
   /* Tap and hold through HA's action handler; who(e) gives the person index or null. */
@@ -607,12 +564,8 @@ class StreetviewHouse extends HTMLElement {
         line = `${where} · ${this._since(s, now)}`;
       }
     }
-    const batS = st(p.battery), chS = st(p.charging);
-    const bat = batS ? svNum(batS.state) : null;
-    const charging = !!chS && ["charging", "on", "true"].includes(svKey(chS.state)); // battery_state: charging, discharging, full, not_charging
-    const low = bat !== null && bat < this._config.batteryLow && !charging;
     const pic = s && s.attributes && s.attributes.entity_picture ? s.attributes.entity_picture : null;
-    return { name, presence, line, coming, low, charging, bat, entityPicture: pic };
+    return { name, presence, line, coming, entityPicture: pic };
   }
 
   /* The cat decides every quarter of an hour: alone in the house it is there more often than not. */
@@ -639,23 +592,6 @@ class StreetviewHouse extends HTMLElement {
     const lit = e.room_light ? this._on("room_light") : anyHome;
     const door = e.door_light ? this._on("door_light") : anyHome;
 
-    // list
-    ps.forEach((x, i) => {
-      const row = this._el.rows[i];
-      if (!row) return;
-      row.querySelector(".name").textContent = x.name;
-      const line = row.querySelector(".line");
-      line.textContent = x.line;
-      line.classList.toggle("coming", x.coming);
-      row.classList.toggle("away", x.presence === "away");
-      row.classList.toggle("home", x.presence === "home");
-      const low = row.querySelector(".badge.low"), ch = row.querySelector(".badge.charging");
-      low.classList.toggle("show", x.low);
-      ch.classList.toggle("show", x.charging);
-      low.title = x.bat !== null ? `Phone ${Math.round(x.bat)} %` : "";
-      ch.title = "Phone charging";
-    });
-
     // picture, rebuilt only when its inputs change
     const people = [];
     this._config.people.forEach((p, i) => {
@@ -664,7 +600,7 @@ class StreetviewHouse extends HTMLElement {
       const im = p.portrait ? this._img[p.portrait] : null;
       if (p.portrait && (!im || im.ok !== false)) pic = { url: p.portrait, w: im ? im.w : 3, h: im ? im.h : 4 };
       else if (ps[i].entityPicture) pic = { url: ps[i].entityPicture, w: 1, h: 1 };
-      people.push({ i, pic, height: p.height, color: "#8d9b8e" });
+      people.push({ i, pic, height: p.height, color: "#8d9b8e", title: `${ps[i].name} · ${ps[i].line}` });
     });
     const cat = this._catHere(!anyHome, now) ? { alone: !anyHome } : null;
     const o = { lit, door, pulse: !door && !anyHome && anyComing, people, cat };
@@ -694,8 +630,6 @@ const SV_EDITOR_SCHEMA = [
         { name: "height", selector: { number: { min: 0.5, max: 1.2, step: 0.01, mode: "box" } } },
       ] },
       { name: "portrait", selector: { text: {} } },
-      { name: "battery", selector: { entity: { domain: "sensor" } } },
-      { name: "charging", selector: { entity: {} } },
       { name: "distance", selector: { entity: { domain: "sensor" } } },
       { name: "direction", selector: { entity: { domain: "sensor" } } },
     ],
@@ -710,14 +644,7 @@ const SV_EDITOR_SCHEMA = [
       { name: "door_light", selector: { entity: { domain: ["light", "switch"] } } },
     ],
   },
-  {
-    type: "grid",
-    name: "",
-    schema: [
-      { name: "battery_low", selector: { number: { min: 0, max: 100, step: 1, mode: "box", unit_of_measurement: "%" } } },
-      { name: "cat", selector: { boolean: {} } },
-    ],
-  },
+  { name: "cat", selector: { boolean: {} } },
   {
     type: "expandable",
     name: "",
@@ -728,13 +655,6 @@ const SV_EDITOR_SCHEMA = [
       { name: "hold_action", selector: { ui_action: { default_action: "none" } } },
     ],
   },
-  {
-    type: "expandable",
-    name: "colors",
-    title: "Colours",
-    icon: "mdi:palette",
-    schema: [{ type: "grid", name: "", schema: Object.keys(SV_COLORS).map((k) => ({ name: k, selector: { text: {} } })) }],
-  },
 ];
 
 const SV_EDITOR_LABELS = {
@@ -742,19 +662,13 @@ const SV_EDITOR_LABELS = {
   name: "Name (empty: first name from HA)",
   height: "Height in the window",
   portrait: "Portrait (e.g. /local/streetview-house/me.webp)",
-  battery: "Phone battery level",
-  charging: "Phone battery state (charging)",
   distance: "Distance to home",
   direction: "Direction of travel",
   room_light: "Room light (empty: on while anyone is home)",
   door_light: "Door light (empty: on while anyone is home)",
-  battery_low: "Battery low below",
   cat: "Cat",
   tap_action: "Tap action (person)",
   hold_action: "Hold action (person)",
-  coming: "coming home",
-  low: "battery low",
-  charge: "charging",
 };
 
 class StreetviewHouseEditor extends HTMLElement {
@@ -777,18 +691,16 @@ class StreetviewHouseEditor extends HTMLElement {
     const ent = config.entities || {};
     data.entities = {};
     for (const role of Object.keys(SV_DEFAULTS.entities)) data.entities[role] = (role in ent ? ent[role] : SV_DEFAULTS.entities[role]) || "";
-    data.battery_low = svNum(config.battery_low) == null ? SV_DEFAULTS.battery_low : svNum(config.battery_low);
     data.cat = config.cat == null ? SV_DEFAULTS.cat : !!config.cat;
     data.tap_action = config.tap_action;
     data.hold_action = config.hold_action;
-    data.colors = { ...(config.colors || {}) };
     return data;
   }
 
   /* form data -> config: only what differs from the defaults. A slot without a person ends the list. */
   static toConfig(data, previous) {
     const config = { type: "custom:streetview-house" };
-    const handled = ["type", "people", "entities", "battery_low", "cat", "tap_action", "hold_action", "colors"];
+    const handled = ["type", "people", "entities", "cat", "tap_action", "hold_action"];
     for (const [k, v] of Object.entries(previous || {})) if (!handled.includes(k)) config[k] = v;
 
     const people = [];
@@ -817,13 +729,8 @@ class StreetviewHouseEditor extends HTMLElement {
       if (v !== def) entities[role] = v;
     }
     if (Object.keys(entities).length) config.entities = entities;
-    const low = svNum(data.battery_low);
-    if (low != null && low !== SV_DEFAULTS.battery_low) config.battery_low = low;
     if (data.cat === false) config.cat = false;
     for (const k of ["tap_action", "hold_action"]) if (data[k] && Object.keys(data[k]).length) config[k] = data[k];
-    const colors = {};
-    for (const [k, v] of Object.entries(data.colors || {})) if (typeof v === "string" && v.trim()) colors[k] = v.trim();
-    if (Object.keys(colors).length) config.colors = colors;
     return config;
   }
 
@@ -885,7 +792,7 @@ if (!window.customCards.some((c) => c.type === "streetview-house")) {
   window.customCards.push({
     type: "streetview-house",
     name: "Streetview House",
-    description: "Who is home: the street facade with the family in the front window, door light and the cat.",
+    description: "Who is home: the street facade with the family standing in the front window, door light and the cat.",
     preview: false,
   });
 }

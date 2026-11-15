@@ -8,6 +8,6 @@ First release.
 * Whoever is home stands behind the window, each in their own spot; portraits from `/config/www`, falling back to the person's picture in Home Assistant.
 * Room light and door light on while anyone is home, or following `room_light` / `door_light`; the door light pulses while someone is coming home to an empty house.
 * The cat comes and goes; glass with tint, shade, reflection and an occasional sweep.
-* One row per person: presence and since when, zone names, "12 km → home" from proximity, phone battery low and charging badges.
-* Tap: more-info of the person; hold optional. Read only.
-* Visual editor: four person slots, lights, battery threshold, cat, actions, colours.
+* The picture is the whole card and fills any width (more wall when wider, the door dropped when narrower).
+* Hover a person for presence and since when; tap: more-info of the person; hold optional. Read only.
+* Visual editor: four person slots, lights, cat, actions.
