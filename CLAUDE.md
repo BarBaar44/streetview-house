@@ -1,0 +1,41 @@
+# Streetview House: notes for working on this repo
+
+Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owner's house, drawn as the street facade of the house. Owner: BarBaar44 (Bb). Sister repos with the same conventions: [gardenview-house](https://github.com/BarBaar44/gardenview-house) (the garden side; the drawing style and camera come from there), [appliance-card](https://github.com/BarBaar44/appliance-card) (the reference), [tesla-model3-card](https://github.com/BarBaar44/tesla-model3-card) (line art and badges).
+
+## Files
+
+| File | Purpose |
+|---|---|
+| `streetview-house.js` | The whole card: plain custom element, no build step, no dependencies. `SV_PEOPLE` holds the owner's household, `SV_DEFAULTS` the rest, `SV` the camera, `svScene` the drawing. |
+| `tests/streetview-house.test.js` | jsdom tests: rows, presence, zones, coming home, badges, lights, portraits and fallbacks, cat, actions, redraws, config errors, editor round trips. `npm test`. |
+| `hacs.json` | Manifest for the Home Assistant Marketplace. |
+| `README.md` | User docs, also the Marketplace info page. Keep the option tables in sync with the code. |
+| `CHANGELOG.md` | One `## vX.Y.Z` section per release; the Release workflow uses it as the release notes. |
+| `shot.png` | README image (plain figures, no photos), linked by absolute raw URL. |
+| `streetview-house.yaml` | Minimal and full example configs. |
+
+## Rules to keep
+
+* **Never put family photos in this repo.** Portraits live in Bb's `/config/www/streetview-house/` (`bart.webp`, `gijs.webp`, `marjolijn.webp`, `tim.webp`: cut out, transparent, about 360 px wide). Screenshots for the README use plain figures (`portrait: null`).
+* Read only: no service calls. Taps go through `hass-action` with the person as entity (more-info by default; hold none).
+* Presence: `home` is home; any other state except unknown/unavailable is away (zone names shown as they are); unknown/unavailable (no tracker) shows the name only, not greyed and not in the window.
+* Each person has a fixed spot in the window (index in `people`, max 4); away leaves the spot empty. Portraits show the middle 74 % so neighbours do not overlap; `height` scales a person.
+* Lights: `room_light` and `door_light` follow real entities when set, else presence (anyone home). The door light pulses only while nobody is home and someone is coming home (direction `towards`, distance above 0).
+* The lantern is not used in real life: it is always drawn off (Bb).
+* The cat: `_catHere` decides per quarter of an hour (deterministic hash), more often there when nobody is home; in a free spot when people are home. `cat: false` removes it.
+* Glass: tint, awning shade, blurred street reflection, fixed sheen and a sweep every 14 s, drawn over the people and the cat.
+* The picture is rebuilt only when its inputs change (`_sceneKey`); the list updates in place. Re-render only on the card's own entities plus a 60 s tick (since texts, cat).
+* Layout: 12 x 3 (184 px). Below 440 px card width (`SV_NARROW_PX`, ResizeObserver) the narrow viewBox drops the door. Measure in a real browser at 360 and 520 px after any layout change; a stub `ha-card` must not set `display` inline.
+* Every animation stops under reduced motion.
+* Visual editor on `ha-form`: four person slots (an empty slot ends the list), lights, battery threshold, cat, actions, colours. Only non-defaults are written; a known entity's cleared role is written as `null`; unknown keys such as `grid_options` are kept.
+* The whole file sits in one block scope; `const VERSION` stays on its own line for the Release workflow.
+
+## Owner's entities
+
+People and phone sensors as in `SV_PEOPLE`. Proximity only for Bart (`sensor.home_bart_baars_distance`, `sensor.home_bart_baars_direction_of_travel`). Tim had no tracker when this was written (state `unknown`); one is coming. Room and door light entities not set yet.
+
+## Releasing
+
+1. Changes go through a pull request; Bb merges.
+2. Bump `VERSION`, add the CHANGELOG section in the PR that is meant to become a release.
+3. The owner pushes the `vX.Y.Z` tag. **Never tag or release without the owner's explicit go.**
