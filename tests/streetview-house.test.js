@@ -45,16 +45,18 @@ function render(s, config = {}, cat = false) {
   c.hass = hass(s);
   return c;
 }
-/* What the card knows per person (shown as the hover title of a person in the window). */
+/* What the card knows per person (shown on their tile). */
 function rows(c) {
   return c._config.people.map((p) => {
     const x = c._person(p, Date.now());
     return { name: x.name, line: x.line, coming: x.coming, away: x.presence === "away" };
   });
 }
-const titles = (c) => [...c._el.svg.querySelectorAll(".person title")].map((t) => t.textContent);
+const tileEls = (c) => [...c._el.tiles.querySelectorAll(".tile")];
+/* Titles of the tiles of whoever is home. */
+const titles = (c) => tileEls(c).filter((t) => t.classList.contains("home")).map((t) => t.getAttribute("title"));
 const scene = (c) => c._el.svg.innerHTML;
-const inWindow = (c) => [...c._el.svg.querySelectorAll(".person")].map((e) => Number(e.getAttribute("data-i")));
+const atHome = (c) => tileEls(c).filter((t) => t.classList.contains("home")).map((t) => Number(t.getAttribute("data-i")));
 function actions(c) {
   const got = [];
   c.addEventListener("hass-action", (ev) => got.push(ev.detail));
@@ -65,31 +67,32 @@ const same = (a, b, msg) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a))
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
-test("people list: names, presence and since; titles for those at home", () => {
+test("people list: names, presence and since on the tiles", () => {
   const c = render(states());
   const r = rows(c);
-  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
+  same(titles(c), ["Alex · Home · 40m", "Sam · Home · 3h"]);
   same(r.map((x) => x.name), ["Alex", "Sam", "Robin", "Kim"]);
-  assert.strictEqual(r[0].line, "Home · 40 min");
-  assert.strictEqual(r[1].line, "Home · 3 h");
-  assert.strictEqual(r[2].line, "Away · 5 h");
+  assert.strictEqual(r[0].line, "Home · 40m");
+  assert.strictEqual(r[1].line, "Home · 3h");
+  assert.strictEqual(r[2].line, "Away · 5h");
   assert(r[2].away && !r[0].away);
 });
 
-test("no tracker (unknown): no presence line, not in the window", () => {
+test("no tracker (unknown): a tile that says so, never at home", () => {
   const c = render(states());
   const r = rows(c);
-  assert.strictEqual(r[3].line, "");
+  assert.strictEqual(r[3].line, "Unknown");
   assert(!r[3].away);
-  same(inWindow(c), [0, 1]);
+  same(atHome(c), [0, 1]);
+  assert(tileEls(c)[3].classList.contains("unknown"));
 });
 
 test("zone name and days", () => {
   const r = rows(render(states({ "person.robin": st("Work", {}, 60 * 50) })));
-  assert.strictEqual(r[2].line, "Work · 2 d");
+  assert.strictEqual(r[2].line, "Work · 2d");
 });
 
-test("coming home: distance and arrow in the title, door light pulses when nobody is home", () => {
+test("coming home: distance and arrow on the tile, door light pulses when nobody is home", () => {
   const s = states({
     "person.alex": st("not_home", {}, 120),
     "person.sam": st("not_home", {}, 30),
@@ -101,14 +104,15 @@ test("coming home: distance and arrow in the title, door light pulses when nobod
   assert.strictEqual(r[0].line, "12 km → home");
   assert(r[0].coming);
   assert(/class="doorlight pulse"/.test(scene(c)));
-  same(inWindow(c), []);
+  assert(tileEls(c)[0].classList.contains("coming"));
+  same(atHome(c), []);
 });
 
 test("coming home under 10 km keeps one decimal; away_from is just away", () => {
   const near = rows(render(states({ "person.alex": st("not_home"), "sensor.home_alex_distance": st(3.64, { unit_of_measurement: "km" }), "sensor.home_alex_direction_of_travel": st("towards") })));
   assert.strictEqual(near[0].line, "3.6 km → home");
   const off = rows(render(states({ "person.alex": st("not_home", {}, 120), "sensor.home_alex_distance": st(8, { unit_of_measurement: "km" }), "sensor.home_alex_direction_of_travel": st("away_from") })));
-  assert.strictEqual(off[0].line, "Away · 2 h");
+  assert.strictEqual(off[0].line, "Away · 2h");
 });
 
 test("no pulse while someone is home (the door light is simply on)", () => {
@@ -118,41 +122,54 @@ test("no pulse while someone is home (the door light is simply on)", () => {
 });
 
 test("lights: follow presence by default, real lights when set", () => {
+  const lamp = (x) => /class="lamp"/.test(x);
   const empty = states({ "person.alex": st("not_home"), "person.sam": st("not_home") });
-  assert(/#1b2224/.test(scene(render(empty))), "dark room when nobody is home");
-  assert(/#bfe0d6/.test(scene(render(states()))), "lit room when someone is home");
+  assert(!lamp(scene(render(empty))), "dark room when nobody is home");
+  assert(lamp(scene(render(states()))), "lit room when someone is home");
   const cfg = { entities: { room_light: "light.front_room", door_light: "light.hall" } };
   const off = scene(render(states({ "light.front_room": st("off"), "light.hall": st("off") }), cfg));
-  assert(/#1b2224/.test(off) && !/#ffd54f/.test(off), "home but lights off: dark");
+  assert(!lamp(off) && !/#ffd54f/.test(off), "home but lights off: dark");
   const on = scene(render(states({ "light.front_room": st("on"), "light.hall": st("on") }), cfg));
-  assert(/#bfe0d6/.test(on));
+  assert(lamp(on) && /#ffd54f/.test(on));
 });
 
-test("portraits: configured file, fallback to entity_picture when it fails, plain figure without either", () => {
+test("portraits on the home tiles: configured file, entity_picture when it fails, an initial without either", () => {
   const c = render(states({ "person.sam": st("home", { entity_picture: "/api/image/sam.jpg" }) }));
-  assert(/href="\/local\/streetview-house\/alex.webp"/.test(scene(c)));
+  const img = (i) => { const e = tileEls(c)[i].querySelector(".face img"); return e && e.getAttribute("src"); };
+  assert.strictEqual(img(0), "/local/streetview-house/alex.webp");
+  assert.strictEqual(img(2), null, "away: no face");
   c._img["/local/streetview-house/sam.webp"] = { ok: false, w: 1, h: 1 };
-  c._sceneKey = null; c._update();
-  assert(/href="\/api\/image\/sam.jpg"/.test(scene(c)));
+  c._update();
+  assert.strictEqual(img(1), "/api/image/sam.jpg");
+  assert(tileEls(c)[1].querySelector(".face.round"));
   const d = render(states(), { people: [{ entity: "person.alex", portrait: null }] });
-  assert(!/<image/.test(scene(d)) && /class="person"/.test(scene(d)));
+  assert.strictEqual(tileEls(d)[0].querySelector(".face.initial").textContent, "A");
+  assert(!/<image/.test(scene(d)), "nobody in the window any more");
 });
 
-test("people at home stand together in the middle, in list order, no gaps", () => {
+test("tiles: one per person in list order, in the same place whether home or not", () => {
   const c = render(states({ "person.sam": st("not_home"), "person.kim": st("home") }));
-  same(inWindow(c), [0, 3], "Alex and Kim");
-  const xs = [...c._el.svg.querySelectorAll(".person clipPath rect, clipPath[id$='-pc0'] rect, clipPath[id$='-pc3'] rect")];
-  const clip = (i) => c._el.svg.querySelector(`clipPath[id$='-pc${i}'] rect`);
-  const r0 = clip(0), r3 = clip(3);
-  const right0 = Number(r0.getAttribute("x")) + Number(r0.getAttribute("width"));
-  const left3 = Number(r3.getAttribute("x"));
-  assert(left3 <= right0 + 0.01, `touching: ${right0} vs ${left3}`);
+  same(tileEls(c).map((t) => Number(t.getAttribute("data-i"))), [0, 1, 2, 3]);
+  same(atHome(c), [0, 3], "Alex and Kim");
+  same(tileEls(c).map((t) => t.querySelector(".n").textContent), ["Alex", "Sam", "Robin", "Kim"]);
+  assert(tileEls(c)[1].querySelector(".pin"), "away: a pin before the place");
+  assert.strictEqual(c._el.tiles.className, "tiles n4");
+  const one = render(states(), { people: ["person.alex"] });
+  assert.strictEqual(one._el.tiles.className, "tiles n1");
 });
 
 test("the cat: there or not, in a free spot when people are home", () => {
   assert(/class="cat"/.test(scene(render(states(), {}, true))));
   assert(!/class="cat"/.test(scene(render(states(), {}, false))));
   assert(!/class="cat"/.test(scene(render(states(), { cat: false }))), "cat: false never shows it");
+  assert(/animateMotion/.test(scene(render(states(), {}, true))), "it walks");
+  const still = new Card();
+  w.document.body.appendChild(still);
+  still._catHere = () => true;
+  still._still = () => true;
+  still.setConfig({ people: FAMILY });
+  still.hass = hass(states());
+  assert(/class="cat"/.test(scene(still)) && !/animateMotion|<animate /.test(scene(still)), "reduced motion: it just sits");
   const c = render(states());
   c._catHere = Card.prototype._catHere;
   const slots = new Set();
@@ -160,36 +177,35 @@ test("the cat: there or not, in a free spot when people are home", () => {
   assert(slots.has(true) && slots.has(false), "comes and goes");
 });
 
-test("tap on a person in the window: more-info of that person; hold off by default", () => {
-  const c = render(states({ "person.robin": st("home") }));
+test("tap on a tile: more-info of that person; hold off by default; the picture does nothing", () => {
+  const c = render(states());
   const got = actions(c);
-  const tap = (i) => {
-    const el = c._el.svg.querySelector(`.person[data-i="${i}"] image`);
+  const press = (el) => {
     el.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 1, clientY: 1 }));
     el.dispatchEvent(new w.MouseEvent("pointerup", { bubbles: true }));
   };
-  tap(2);
+  press(tileEls(c)[2].querySelector(".n"));
   same(got[0], { config: { entity: "person.robin", tap_action: { action: "more-info" } }, action: "tap" });
-  tap(1);
+  press(tileEls(c)[1]);
   assert.strictEqual(got[1].config.entity, "person.sam");
-  const wall = c._el.svg.querySelector("polygon");
-  wall.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 1, clientY: 1 }));
-  wall.dispatchEvent(new w.MouseEvent("pointerup", { bubbles: true }));
-  assert.strictEqual(got.length, 2, "tapping the wall does nothing");
+  press(c._el.svg.querySelector("polygon"));
+  assert.strictEqual(got.length, 2, "tapping the house does nothing");
+  tileEls(c)[0].dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  assert.strictEqual(got[2].config.entity, "person.alex", "Enter on a focused tile");
 });
 
-test("the picture fills the card: wider shows more wall, narrower drops the door", () => {
+test("the picture: a wider half makes the house longer, a narrow one shows it whole", () => {
   const c = render(states());
   const vb = () => c._el.svg.getAttribute("viewBox").split(" ").map(Number);
-  c._fit(520, 184);
-  const wide = vb();
-  c._fit(370, 184);
-  const mid = vb();
-  c._fit(250, 184);
+  c._fit(180, 184);
+  assert.strictEqual(c._W, 5.4, "phone: the house as drawn");
   const narrow = vb();
-  assert(Math.abs(wide[2] / wide[3] - 520 / 184) < 0.01 && Math.abs(mid[2] / mid[3] - 370 / 184) < 0.01);
-  assert(narrow[0] > mid[0], "narrow keeps the window, crops the door side");
-  assert(Math.abs(narrow[0] + narrow[2] - (mid[0] + mid[2])) < 0.5 || narrow[0] + narrow[2] <= mid[0] + mid[2] + 0.5);
+  c._fit(320, 184);
+  assert(c._W > 5.4, "wide: a longer house");
+  const wide = vb();
+  assert(Math.abs(wide[2] / wide[3] - 320 / 184) < 0.08, `fills the half: ${wide[2] / wide[3]}`);
+  assert(wide[2] > narrow[2] && Math.abs(wide[0] - narrow[0]) < 0.01, "grows to the right, the corner stays");
+  assert.strictEqual(c.shadowRoot.querySelector("svg").getAttribute("preserveAspectRatio"), "xMinYMid meet", "never cropped");
 });
 
 test("own people list: no built-in defaults, null switches a role off", () => {
@@ -209,14 +225,14 @@ test("no people list: the first four person entities in Home Assistant, sorted, 
   c.setConfig({});
   c.hass = hass(states({ "person.zoe": st("home", { friendly_name: "Zoe" }) }));
   same(c._config.people.map((p) => p.entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
-  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
-  assert(!/<image/.test(scene(c)), "no portraits by default: plain figures");
+  same(titles(c), ["Alex · Home · 40m", "Sam · Home · 3h"]);
+  assert(!tileEls(c).some((t) => t.querySelector(".face img")), "no portraits by default: initials");
   const s = states();
   delete s["person.kim"];
   c.hass = hass(s);
   same(c._config.people.map((p) => p.entity), ["person.alex", "person.robin", "person.sam"]);
   c.hass = hass({ ...s, "person.sam": st("not_home") });
-  same(titles(c), ["Alex · Home · 40 min"], "still follows their states");
+  same(titles(c), ["Alex · Home · 40m"], "still follows their states");
   const e = new Card();
   e.setConfig({});
   e.hass = hass({ "sun.sun": st("above_horizon") });
@@ -231,7 +247,7 @@ test("no people list, hass set before the config: people show at once", () => {
   c.hass = hass(states());
   c.setConfig({});
   same(c._config.people.map((p) => p.entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
-  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
+  same(titles(c), ["Alex · Home · 40m", "Sam · Home · 3h"]);
 });
 
 test("automatic list: scanned again only when the entity registry changes", () => {

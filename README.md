@@ -1,15 +1,14 @@
 # Streetview House
 
-Who is home, at a glance: the street side of the house as a line drawing, with the family standing behind the front window. The counterpart of [Gardenview House](https://github.com/BarBaar44/gardenview-house), which draws the garden side.
+Who is home, at a glance: on the left the street side of the house as a line drawing, seen at an angle; on the right a tile per person. The counterpart of [Gardenview House](https://github.com/BarBaar44/gardenview-house), which draws the garden side.
 
 ![Streetview House](https://raw.githubusercontent.com/BarBaar44/streetview-house/main/shot.png)
 
-* **Whoever is home stands in the window**, together in the middle, shoulder to shoulder, in the order of the `people` list.
+* **A tile per person**, always in the same place, in the order of the `people` list. At home: their portrait, name and since when ("Home · 40m"). Away: name, place and since when ("Work · 5h"). Coming home: the distance in orange ("4.2 km → home").
 * **Room light and door light** are on while anyone is home, or follow real lights when you set `room_light` and `door_light`.
 * **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
-* **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then and sits next to them.
-* **The picture is the whole card.** It fills any width: a wider card shows more wall, a narrower one keeps the window and drops the door.
-* **Hover** a person: name, presence and since when ("Alex · Home · 40 min"). **Tap**: more-info of that person (map and history). Hold: optional.
+* **The cat** comes and goes: now and then it walks in along the window sill, sits for a wash and a stare, jumps down and strolls off past the door. With nobody home it is around more often.
+* **Tap** a tile: more-info of that person (map and history). Hold: optional.
 
 Read only: the card calls no services. One file, no dependencies, no card_mod.
 
@@ -25,7 +24,7 @@ Manual: copy `streetview-house.js` to `/config/www/` and add `/local/streetview-
 
 Each person can have a portrait: a head and shoulders picture with a transparent background (PNG or WebP), facing the camera. Put them in `/config/www/streetview-house/` and point `portrait` at `/local/streetview-house/<name>.webp`. About 360 px wide is plenty (around 40 KB as WebP).
 
-Without a portrait file, or when it cannot be loaded, the card uses the person's picture from Home Assistant; without either, a plain figure. Portraits stay on your own Home Assistant, never in this repository.
+Without a portrait file, or when it cannot be loaded, the tile shows the person's picture from Home Assistant in a circle; without either, their initial. Portraits stay on your own Home Assistant, never in this repository.
 
 ## Configuration
 
@@ -36,7 +35,7 @@ grid_options:
   rows: 3
 ```
 
-Everything else is optional, in YAML or in the visual editor. Without `people` the card shows the first four `person` entities in Home Assistant (sorted by entity id, plain figures or their Home Assistant pictures); set `people` to choose who, in which order, with portraits and proximity.
+Everything else is optional, in YAML or in the visual editor. Without `people` the card shows the first four `person` entities in Home Assistant (sorted by entity id, with their Home Assistant pictures or initials); set `people` to choose who, in which order, with portraits and proximity.
 
 ```yaml
 type: custom:streetview-house
@@ -53,11 +52,11 @@ entities:
 
 | Option | Default | |
 |---|---|---|
-| `people` | the first four `person` entities | list of up to 4 (the window has room for four); a plain entity id is enough |
+| `people` | the first four `person` entities | list of up to 4 (four tiles); a plain entity id is enough |
 | `entities.room_light` | none | light or switch of the room behind the window; none: on while anyone is home |
-| `entities.door_light` | none | the hall light behind the door grille; none: on while anyone is home |
+| `entities.door_light` | none | the hall light behind the door window; none: on while anyone is home |
 | `cat` | `true` | `false`: no cat |
-| `tap_action` | more-info | for the person tapped in the window |
+| `tap_action` | more-info | for the person whose tile is tapped |
 | `hold_action` | none | |
 
 ### Per person
@@ -67,23 +66,25 @@ entities:
 | `entity` | required | `person.*` |
 | `name` | first word of the friendly name | |
 | `portrait` | none | image URL, see Portraits; `null`: none |
-| `height` | `0.95` | 0.5 to 1.2: relative height in the window |
+| `height` | `0.95` | 0.5 to 1.2: how big the portrait stands in the tile (shorter people a bit smaller) |
 | `distance` | none | proximity distance sensor |
 | `direction` | none | proximity direction of travel (`towards` means coming home: the door light pulses while nobody is home) |
 
 `null` works the same as leaving a key out.
 
-### What the hover title says
+### What a tile says
 
-| State | Title |
+| State | Tile |
 |---|---|
-| `home` | Alex · Home · 40 min |
-| `not_home` | only people at home are in the window |
-| `unknown` / `unavailable` (no tracker) | never in the window |
+| `home` | portrait, Alex, Home · 40m (green) |
+| `not_home` | Alex, Away · 2h |
+| a zone, e.g. `Work` | Alex, Work · 5h |
+| coming home (direction `towards`, distance above 0) | Alex, 4.2 km → home (orange) |
+| `unknown` / `unavailable` (no tracker) | Alex, Unknown |
 
 ## Layout
 
-12 columns by 3 rows (184 px) by default; any size works. The picture always fills the card: wider than the facade shows more wall on both sides, narrower keeps the window and drops the door. All animations (cat, door light, the reflection sliding over the glass) stop under reduced motion.
+12 columns by 3 rows (184 px) by default. The house takes the left half, the tiles the right half in a 2 by 2 grid. On a wide card the house gets a longer front window; on a narrow one it is drawn smaller, never cropped, and the tiles put the face on top with the name below. All animations (the cat, the door light, the reflection sliding over the glass) stop under reduced motion; the cat then just sits on the sill.
 
 ## License
 
