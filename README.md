@@ -4,12 +4,12 @@ Who is home, at a glance: the street side of the house as a line drawing, with t
 
 ![Streetview House](https://raw.githubusercontent.com/BarBaar44/streetview-house/main/shot.png)
 
-* **Whoever is home stands in the window**, each in their own spot (the order of the `people` list). Away: the spot is empty.
+* **Whoever is home stands in the window**, together in the middle, shoulder to shoulder, in the order of the `people` list.
 * **Room light and door light** are on while anyone is home, or follow real lights when you set `room_light` and `door_light`.
-* **Coming home:** with a proximity sensor, the row reads "12 km → home" and, while the house is still empty, the door light pulses.
-* **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then.
-* **One row per person:** name, presence and since when ("Home · 3 h", "Away · 5 h", a zone name), a red badge when the phone battery is low and not charging, a bolt while charging.
-* **Tap** a row or a person in the window: more-info of that person (map and history). Hold: optional.
+* **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
+* **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then and sits next to them.
+* **The picture is the whole card.** It fills any width: a wider card shows more wall, a narrower one keeps the window and drops the door.
+* **Hover** a person: name, presence and since when ("Bart · Home · 40 min"). **Tap**: more-info of that person (map and history). Hold: optional.
 
 Read only: the card calls no services. One file, no dependencies, no card_mod.
 
@@ -43,8 +43,6 @@ type: custom:streetview-house
 people:
   - entity: person.alex
     portrait: /local/streetview-house/alex.webp
-    battery: sensor.alex_phone_battery_level
-    charging: sensor.alex_phone_battery_state
     distance: sensor.home_alex_distance
     direction: sensor.home_alex_direction_of_travel
   - person.sam            # just the person
@@ -58,11 +56,9 @@ entities:
 | `people` | the owner's four | list of up to 4 (the window has room for four); a plain entity id is enough |
 | `entities.room_light` | none | light or switch of the room behind the window; none: on while anyone is home |
 | `entities.door_light` | none | the hall light behind the door grille; none: on while anyone is home |
-| `battery_low` | `20` | % below which a phone that is not charging gets the red badge |
 | `cat` | `true` | `false`: no cat |
-| `tap_action` | more-info | for the person tapped (row or window) |
+| `tap_action` | more-info | for the person tapped in the window |
 | `hold_action` | none | |
-| `colors` | | `coming` (coming home text), `low` (battery badge), `charge` (charging badge) |
 
 ### Per person
 
@@ -72,26 +68,22 @@ entities:
 | `name` | first word of the friendly name | |
 | `portrait` | none | image URL, see Portraits; `null`: none |
 | `height` | `0.95` | 0.5 to 1.2: relative height in the window |
-| `battery` | none | battery level sensor (%) |
-| `charging` | none | battery state sensor (`charging` / `discharging` / `full`), or any on/off entity |
 | `distance` | none | proximity distance sensor |
-| `direction` | none | proximity direction of travel (`towards` means coming home) |
+| `direction` | none | proximity direction of travel (`towards` means coming home: the door light pulses while nobody is home) |
 
 A known entity (one of the owner's) keeps its defaults for the keys you leave out; `null` switches a role off.
 
-### What the row says
+### What the hover title says
 
-| State | Row |
+| State | Title |
 |---|---|
-| `home` | Home · 40 min |
-| `not_home` | Away · 5 h |
-| a zone | Work · 2 h |
-| away, direction `towards`, distance above 0 | 12 km → home (accent colour) |
-| `unknown` / `unavailable` (no tracker) | name only, not greyed, not in the window |
+| `home` | Bart · Home · 40 min |
+| `not_home` | only people at home are in the window |
+| `unknown` / `unavailable` (no tracker) | never in the window |
 
 ## Layout
 
-12 columns by 3 rows (184 px). On a narrow section (below 440 px) the picture drops the door and keeps the lantern and window, so the names keep their room. All animations (cat, door light, the reflection sliding over the glass) stop under reduced motion.
+12 columns by 3 rows (184 px) by default; any size works. The picture always fills the card: wider than the facade shows more wall on both sides, narrower keeps the window and drops the door. All animations (cat, door light, the reflection sliding over the glass) stop under reduced motion.
 
 ## License
 

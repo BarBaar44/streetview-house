@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.2.0
+
+The picture is the whole card: the text column made the card too wide.
+
+* The house fills any card size: a wider card shows more wall, a narrower one keeps the window and drops the door.
+* Whoever is home stands together in the middle of the window, shoulder to shoulder, in the order of the people list (no gaps for whoever is away); the cat sits next to them when it drops by.
+* Hover a person in the window for presence and since when; tap: more-info of that person.
+* Removed with the text column: the phone battery and charging badges and the options `battery`, `charging`, `battery_low` and `colors` (remove them from your config if you set them).
+
 ## v0.1.0
 
 First release.

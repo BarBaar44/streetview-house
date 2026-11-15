@@ -7,7 +7,7 @@ Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owne
 | File | Purpose |
 |---|---|
 | `streetview-house.js` | The whole card: plain custom element, no build step, no dependencies. `SV_PEOPLE` holds the owner's household, `SV_DEFAULTS` the rest, `SV` the camera, `svScene` the drawing. |
-| `tests/streetview-house.test.js` | jsdom tests: rows, presence, zones, coming home, badges, lights, portraits and fallbacks, cat, actions, redraws, config errors, editor round trips. `npm test`. |
+| `tests/streetview-house.test.js` | jsdom tests: presence, zones, coming home, lights, portraits and fallbacks, cat, actions, fitting the picture, redraws, config errors, editor round trips. `npm test`. |
 | `hacs.json` | Manifest for the Home Assistant Marketplace. |
 | `README.md` | User docs, also the Marketplace info page. Keep the option tables in sync with the code. |
 | `CHANGELOG.md` | One `## vX.Y.Z` section per release; the Release workflow uses it as the release notes. |
@@ -17,22 +17,23 @@ Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owne
 ## Rules to keep
 
 * **Never put family photos in this repo.** Portraits live in Bb's `/config/www/streetview-house/` (`bart.webp`, `gijs.webp`, `marjolijn.webp`, `tim.webp`: cut out, transparent, about 360 px wide). Screenshots for the README use plain figures (`portrait: null`).
-* Read only: no service calls. Taps go through `hass-action` with the person as entity (more-info by default; hold none).
-* Presence: `home` is home; any other state except unknown/unavailable is away (zone names shown as they are); unknown/unavailable (no tracker) shows the name only, not greyed and not in the window.
-* Each person has a fixed spot in the window (index in `people`, max 4); away leaves the spot empty. Portraits show the middle 74 % so neighbours do not overlap; `height` scales a person.
+* The picture is the whole card (Bb dropped the text column: too wide). No rows, no phone badges. Presence and since when show as the hover `<title>` of a person in the window.
+* Read only: no service calls. Taps on a person in the window go through `hass-action` with the person as entity (more-info by default; hold none); the wall does nothing.
+* Presence: `home` is home; any other state except unknown/unavailable is away (zone names shown as they are); unknown/unavailable (no tracker) is never in the window.
+* Whoever is home stands together, centred in the window, shoulder to shoulder in the order of `people` (max 4); no gaps for whoever is away (Bb: "we are no enemies"). Each person takes the width they show (middle 74 % of the portrait), so a shorter one (`height`) stands closer. The visiting cat sits right of the group (in front when all four are home).
 * Lights: `room_light` and `door_light` follow real entities when set, else presence (anyone home). The door light pulses only while nobody is home and someone is coming home (direction `towards`, distance above 0).
 * The lantern is not used in real life: it is always drawn off (Bb).
-* The cat: `_catHere` decides per quarter of an hour (deterministic hash), more often there when nobody is home; in a free spot when people are home. `cat: false` removes it.
+* The cat: `_catHere` decides per quarter of an hour (deterministic hash), more often there when nobody is home; next to the group when people are home. `cat: false` removes it.
 * Glass: tint, awning shade, blurred street reflection, fixed sheen and a sweep every 14 s, drawn over the people and the cat.
-* The picture is rebuilt only when its inputs change (`_sceneKey`); the list updates in place. Re-render only on the card's own entities plus a 60 s tick (since texts, cat).
-* Layout: 12 x 3 (184 px). Below 440 px card width (`SV_NARROW_PX`, ResizeObserver) the narrow viewBox drops the door. Measure in a real browser at 360 and 520 px after any layout change; a stub `ha-card` must not set `display` inline.
+* The picture is rebuilt only when its inputs change (`_sceneKey`). Re-render only on the card's own entities plus a 60 s tick (since texts, cat).
+* Layout: 12 x 3 (184 px) by default. `_fit` (ResizeObserver) sets the viewBox to the card's aspect: wider than the facade widens it around the centre (the wall is drawn far wider and taller than any view, with a darker plinth), narrower anchors on the right (window kept, door dropped first), never narrower than `SV.narrow`; `slice` crops beyond that. Measure in a real browser at 250, 370 and 520 px after any layout change; a stub `ha-card` must not set `display` inline.
 * Every animation stops under reduced motion.
-* Visual editor on `ha-form`: four person slots (an empty slot ends the list), lights, battery threshold, cat, actions, colours. Only non-defaults are written; a known entity's cleared role is written as `null`; unknown keys such as `grid_options` are kept.
+* Visual editor on `ha-form`: four person slots (an empty slot ends the list), lights, cat, actions. Only non-defaults are written; a known entity's cleared role is written as `null`; unknown keys such as `grid_options` are kept.
 * The whole file sits in one block scope; `const VERSION` stays on its own line for the Release workflow.
 
 ## Owner's entities
 
-People and phone sensors as in `SV_PEOPLE`. Proximity only for Bart (`sensor.home_bart_baars_distance`, `sensor.home_bart_baars_direction_of_travel`). Tim had no tracker when this was written (state `unknown`); one is coming. Room and door light entities not set yet.
+People as in `SV_PEOPLE`. Proximity only for Bart (`sensor.home_bart_baars_distance`, `sensor.home_bart_baars_direction_of_travel`). Tim had no tracker when this was written (state `unknown`); one is coming. Room and door light entities not set yet.
 
 ## Releasing
 
