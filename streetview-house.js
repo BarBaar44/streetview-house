@@ -169,17 +169,27 @@ function svScene(o, id) {
     r += `<path d="M${F(lx - 4 * u)} ${F(ly + 5 * u)}Q${F(lx - 3.6 * u)} ${F(ly)} ${F(lx)} ${F(ly)}Q${F(lx + 3.6 * u)} ${F(ly)} ${F(lx + 4 * u)} ${F(ly + 5 * u)}Z" fill="#2b2b2b" stroke="#111" stroke-width=".6"/>`;
     r += `<ellipse cx="${F(lx)}" cy="${F(ly + 5 * u)}" rx="${F(4 * u)}" ry="${F(0.9 * u)}" fill="#ffe082"/>`;
   }
-  // people: a fixed spot each (the order of the people list), standing behind the glass
+  // people: whoever is home stands together in the middle of the window, shoulder to shoulder,
+  // in the order of the people list. Each takes the width it shows, so shorter people stand closer.
   const cwi = bw * 0.07, x0 = bx + cwi * 1.3, uw = bw - cwi * 2.6, slot = uw / SV_MAX_PEOPLE;
-  const one = (p) => {
-    const cx = x0 + slot * (p.i + 0.5);
+  const keep = 0.74; // the middle 74 % of a portrait: shoulders trimmed
+  const size = (p) => {
+    if (!p.pic) { const h = bh * 0.5 * p.height; return { h, w: slot * 0.84 * p.height, vis: slot * 0.84 * p.height }; }
+    const h = Math.min(bh * 0.66, slot * 1.02 * p.pic.h / (p.pic.w * keep)) * p.height, w = h * p.pic.w / p.pic.h;
+    return { h, w, vis: w * keep };
+  };
+  const sizes = o.people.map(size);
+  const total = sizes.reduce((t, z) => t + z.vis, 0);
+  let at = x0 + (uw - total) / 2;
+  const centres = sizes.map((z) => { const c = at + z.vis / 2; at += z.vis; return c; });
+  const groupEnd = at;
+  const one = (p, k) => {
+    const cx = centres[k], { h, w } = sizes[k];
     if (!p.pic) { // no picture: a plain head and shoulders
-      const h = bh * 0.5 * p.height, y = by + bh - h;
-      return `<g class="person" data-i="${p.i}"><title>${svEsc(p.title || "")}</title><path d="M${F(cx - slot * 0.42)} ${F(by + bh + 2)}V${F(y + h * 0.66)}Q${F(cx - slot * 0.42)} ${F(y + h * 0.52)} ${F(cx - slot * 0.2)} ${F(y + h * 0.52)}H${F(cx + slot * 0.2)}Q${F(cx + slot * 0.42)} ${F(y + h * 0.52)} ${F(cx + slot * 0.42)} ${F(y + h * 0.66)}V${F(by + bh + 2)}Z" fill="${p.color}" stroke="#111" stroke-width=".8"/>`
+      const y = by + bh - h, hw = w / 2;
+      return `<g class="person" data-i="${p.i}"><title>${svEsc(p.title || "")}</title><path d="M${F(cx - hw)} ${F(by + bh + 2)}V${F(y + h * 0.66)}Q${F(cx - hw)} ${F(y + h * 0.52)} ${F(cx - hw * 0.48)} ${F(y + h * 0.52)}H${F(cx + hw * 0.48)}Q${F(cx + hw)} ${F(y + h * 0.52)} ${F(cx + hw)} ${F(y + h * 0.66)}V${F(by + bh + 2)}Z" fill="${p.color}" stroke="#111" stroke-width=".8"/>`
         + `<ellipse cx="${F(cx)}" cy="${F(y + h * 0.28)}" rx="${F(h * 0.17)}" ry="${F(h * 0.22)}" fill="#e9b896" stroke="#111" stroke-width=".8"/></g>`;
     }
-    const keep = 0.74; // the middle 74 % of the portrait: shoulders trimmed, so neighbours do not overlap
-    const h = Math.min(bh * 0.66, slot * 0.96 * p.pic.h / (p.pic.w * keep)) * p.height, w = h * p.pic.w / p.pic.h;
     const y = by + bh - h + bh * 0.02, cid = `${id}-pc${p.i}`;
     defs += `<clipPath id="${cid}"><rect x="${F(cx - w * keep / 2)}" y="${F(y - 2)}" width="${F(w * keep)}" height="${F(h + 4)}" rx="${F(w * 0.06)}"/></clipPath>`;
     return `<g class="person" data-i="${p.i}"><title>${svEsc(p.title || "")}</title><image href="${svEsc(p.pic.url)}" x="${F(cx - w / 2)}" y="${F(y)}" width="${F(w)}" height="${F(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/></g>`;
@@ -198,10 +208,9 @@ function svScene(o, id) {
   // ---- the cat: white, black cap with a white blaze, black nose smudge, side stripes ----
   if (o.cat) {
     const sill = proj([WX0 + fw + 0.55, WY0 + fw, 0.006]);
-    const used = new Set(o.people.map((p) => p.i));
-    const free = [0, 1, 2, 3].filter((i) => !used.has(i));
-    const cx = o.cat.alone ? sill[0] : x0 + slot * ((free.length ? free[0] : 1) + (free.length ? 0.5 : 0));
     const k = (proj([1, 0.5, 0])[1] - proj([1, 1.5, 0])[1]) * 0.42 / 42;
+    // alone: on the sill; with people home: right next to the group (in front of it when all four are home)
+    const cx = o.cat.alone ? sill[0] : o.people.length < SV_MAX_PEOPLE ? groupEnd + 15 * k : x0 + slot;
     const st = 'stroke="#111" stroke-width="1.1" stroke-linejoin="round"';
     const body = "M-12 0 C-15 -9 -13 -17 -6 -20 L6 -20 C13 -17 15 -9 12 0 Z";
     const head = "M-9.5 -25 C-10 -32 -6 -35.5 0 -35.5 C6 -35.5 10 -32 9.5 -25 C9 -19.5 5 -16.5 0 -16.5 C-5 -16.5 -9 -19.5 -9.5 -25 Z";

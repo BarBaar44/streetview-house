@@ -20,10 +20,10 @@ Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owne
 * The picture is the whole card (Bb dropped the text column: too wide). No rows, no phone badges. Presence and since when show as the hover `<title>` of a person in the window.
 * Read only: no service calls. Taps on a person in the window go through `hass-action` with the person as entity (more-info by default; hold none); the wall does nothing.
 * Presence: `home` is home; any other state except unknown/unavailable is away (zone names shown as they are); unknown/unavailable (no tracker) is never in the window.
-* Each person has a fixed spot in the window (index in `people`, max 4); away leaves the spot empty. Portraits show the middle 74 % so neighbours do not overlap; `height` scales a person.
+* Whoever is home stands together, centred in the window, shoulder to shoulder in the order of `people` (max 4); no gaps for whoever is away (Bb: "we are no enemies"). Each person takes the width they show (middle 74 % of the portrait), so a shorter one (`height`) stands closer. The visiting cat sits right of the group (in front when all four are home).
 * Lights: `room_light` and `door_light` follow real entities when set, else presence (anyone home). The door light pulses only while nobody is home and someone is coming home (direction `towards`, distance above 0).
 * The lantern is not used in real life: it is always drawn off (Bb).
-* The cat: `_catHere` decides per quarter of an hour (deterministic hash), more often there when nobody is home; in a free spot when people are home. `cat: false` removes it.
+* The cat: `_catHere` decides per quarter of an hour (deterministic hash), more often there when nobody is home; next to the group when people are home. `cat: false` removes it.
 * Glass: tint, awning shade, blurred street reflection, fixed sheen and a sweep every 14 s, drawn over the people and the cat.
 * The picture is rebuilt only when its inputs change (`_sceneKey`). Re-render only on the card's own entities plus a 60 s tick (since texts, cat).
 * Layout: 12 x 3 (184 px) by default. `_fit` (ResizeObserver) sets the viewBox to the card's aspect: wider than the facade widens it around the centre (the wall is drawn far wider and taller than any view, with a darker plinth), narrower anchors on the right (window kept, door dropped first), never narrower than `SV.narrow`; `slice` crops beyond that. Measure in a real browser at 250, 370 and 520 px after any layout change; a stub `ha-card` must not set `display` inline.

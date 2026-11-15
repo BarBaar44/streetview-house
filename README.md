@@ -4,10 +4,10 @@ Who is home, at a glance: the street side of the house as a line drawing, with t
 
 ![Streetview House](https://raw.githubusercontent.com/BarBaar44/streetview-house/main/shot.png)
 
-* **Whoever is home stands in the window**, each in their own spot (the order of the `people` list). Away: the spot is empty.
+* **Whoever is home stands in the window**, together in the middle, shoulder to shoulder, in the order of the `people` list.
 * **Room light and door light** are on while anyone is home, or follow real lights when you set `room_light` and `door_light`.
 * **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
-* **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then.
+* **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then and sits next to them.
 * **The picture is the whole card.** It fills any width: a wider card shows more wall, a narrower one keeps the window and drops the door.
 * **Hover** a person: name, presence and since when ("Bart · Home · 40 min"). **Tap**: more-info of that person (map and history). Hold: optional.
 

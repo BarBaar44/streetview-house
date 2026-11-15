@@ -136,6 +136,17 @@ test("portraits: configured file, fallback to entity_picture when it fails, plai
   assert(!/<image/.test(scene(d)) && /class="person"/.test(scene(d)));
 });
 
+test("people at home stand together in the middle, in list order, no gaps", () => {
+  const c = render(states({ "person.gijs_baars": st("not_home"), "person.tim_baars": st("home") }));
+  same(inWindow(c), [0, 3], "Bart and Tim");
+  const xs = [...c._el.svg.querySelectorAll(".person clipPath rect, clipPath[id$='-pc0'] rect, clipPath[id$='-pc3'] rect")];
+  const clip = (i) => c._el.svg.querySelector(`clipPath[id$='-pc${i}'] rect`);
+  const r0 = clip(0), r3 = clip(3);
+  const right0 = Number(r0.getAttribute("x")) + Number(r0.getAttribute("width"));
+  const left3 = Number(r3.getAttribute("x"));
+  assert(left3 <= right0 + 0.01, `touching: ${right0} vs ${left3}`);
+});
+
 test("the cat: there or not, in a free spot when people are home", () => {
   assert(/class="cat"/.test(scene(render(states(), {}, true))));
   assert(!/class="cat"/.test(scene(render(states(), {}, false))));
