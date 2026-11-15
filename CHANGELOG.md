@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.1
+
+* The room light now shows: with the light on, the front room glows warm (amber glass, a pendant lamp with its glow, a sofa back) and the light falls on the sill and the pavement. With it off the glass is cool grey.
+
 ## v0.4.0
 
 A new look, after the Gardenview House card: the house on the left, the people on the right.

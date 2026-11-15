@@ -17,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.4.0";
+const VERSION = "0.4.1";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -155,7 +155,8 @@ function svScene(o, id) {
   const wx0 = 1.75, wx1 = W - 0.3, wy0 = 0.7, wy1 = 2.3; // front window
   const glass = quad(wx0 + 0.1, wx1 - 0.1, wy0 + 0.1, wy1 - 0.1, -0.1);
   let s = `<defs><clipPath id="${id}-glass"><polygon points="${pts(glass)}"/></clipPath>`
-    + `<linearGradient id="${id}-gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${o.lit ? "#dfeee6" : "#b9c4c2"}"/><stop offset="1" stop-color="${o.lit ? "#a9cdbd" : "#8a9694"}"/></linearGradient>`
+    + `<linearGradient id="${id}-gl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${o.lit ? "#ffe9b0" : "#8e9ea3"}"/><stop offset="1" stop-color="${o.lit ? "#e9b65a" : "#5d6b71"}"/></linearGradient>`
+    + (o.lit ? `<radialGradient id="${id}-glow"><stop offset="0" stop-color="#fff6d6" stop-opacity=".95"/><stop offset=".35" stop-color="#ffd54f" stop-opacity=".55"/><stop offset="1" stop-color="#ffb300" stop-opacity="0"/></radialGradient>` : "")
     + `<linearGradient id="${id}-sh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>`;
 
   // shadow on the pavement, side wall, facade with siding lines, plinth, downpipe
@@ -197,16 +198,30 @@ function svScene(o, id) {
   s += poly([[wx0 + 0.1, wy1 - 0.1, 0], [wx1 - 0.1, wy1 - 0.1, 0], [wx1 - 0.1, wy1 - 0.1, -0.1], [wx0 + 0.1, wy1 - 0.1, -0.1]], "#c6c2bb");
   s += poly(glass, `url(#${id}-gl)`);
   s += `<g clip-path="url(#${id}-glass)" pointer-events="none">`;
-  if (o.lit) {
-    const l = proj([Math.min((wx0 + W) / 2, 3.45), 2.1, -1.0]);
-    s += `<circle class="lamp" cx="${F(l[0])}" cy="${F(l[1])}" r="14" fill="#ffd54f" opacity=".28"/><circle cx="${F(l[0])}" cy="${F(l[1])}" r="3" fill="#ffe082"/>`;
+  // the room: a sofa back along the bottom, a pendant lamp; with the light on it glows warm
+  {
+    const lx = Math.min((wx0 + W) / 2, 3.45), lz = -1.0;
+    const top = proj([lx, wy1, lz]), l = proj([lx, 1.95, lz]), sw = (proj([lx + 0.16, 1.95, lz])[0] - l[0]);
+    if (o.lit) {
+      const r = proj([lx + 1.4, 1.95, lz])[0] - l[0];
+      s += `<ellipse class="lamp" cx="${F(l[0])}" cy="${F(l[1] + sw * 0.6)}" rx="${F(r)}" ry="${F(r * 0.8)}" fill="url(#${id}-glow)"/>`;
+    }
+    const sofa = [[wx0 + 0.5, wy0 + 0.1, -1.2], [Math.min(wx1 - 0.4, wx0 + 2.6), wy0 + 0.1, -1.2], [Math.min(wx1 - 0.4, wx0 + 2.6), wy0 + 0.42, -1.2], [wx0 + 0.5, wy0 + 0.42, -1.2]];
+    s += `<polygon points="${pts(sofa)}" fill="${o.lit ? "#8a5a3c" : "#3d474b"}" stroke="#111" stroke-width=".8" stroke-linejoin="round"/>`;
+    s += `<line x1="${F(top[0])}" y1="${F(top[1])}" x2="${F(l[0])}" y2="${F(l[1])}" stroke="#111" stroke-width=".7"/>`;
+    s += `<path d="M${F(l[0] - sw)} ${F(l[1] + sw * 0.9)}L${F(l[0] - sw * 0.45)} ${F(l[1])}H${F(l[0] + sw * 0.45)}L${F(l[0] + sw)} ${F(l[1] + sw * 0.9)}Z" fill="#2b2b2b" stroke="#111" stroke-width=".7"/>`;
+    if (o.lit) s += `<ellipse cx="${F(l[0])}" cy="${F(l[1] + sw * 0.9)}" rx="${F(sw * 0.8)}" ry="${F(sw * 0.22)}" fill="#fff3c4"/>`;
   }
-  s += `<polygon points="${pts(glass)}" fill="#bfe3d4" opacity=".12"/>`;
+  if (!o.lit) s += `<polygon points="${pts(glass)}" fill="#bfe3d4" opacity=".12"/>`;
   s += `<polygon points="${pts([[2.4, wy1, -0.1], [2.65, wy1, -0.1], [2.25, wy0, -0.1], [2.0, wy0, -0.1]])}" fill="#fff" opacity=".18"/>`;
   s += `<polygon class="sweep" points="${pts([[2.3, wy1, -0.1], [2.6, wy1, -0.1], [2.2, wy0, -0.1], [1.9, wy0, -0.1]])}" fill="url(#${id}-sh)"/></g>`;
   s += `<polygon points="${pts(glass)}" fill="none" stroke="#111" stroke-width="1.6"/>`;
   s += poly([[wx0 - 0.08, wy0, 0.12], [wx1 + 0.08, wy0, 0.12], [wx1 + 0.08, wy0, 0], [wx0 - 0.08, wy0, 0]], "#f4f2ee");
   s += poly(quad(wx0 - 0.08, wx1 + 0.08, wy0 - 0.06, wy0, 0.12), "#d8d5cf");
+  if (o.lit) {
+    s += `<polygon class="spill" points="${pts([[wx0 + 0.1, wy0, 0], [wx1 - 0.1, wy0, 0], [wx1 - 0.1, wy0, 0.12], [wx0 + 0.1, wy0, 0.12]])}" fill="#ffd54f" opacity=".35"/>`;
+    s += `<polygon class="spill" points="${pts([[wx0 + 0.1, 0, 0.02], [wx1 - 0.1, 0, 0.02], [wx1 + 0.4, 0, 1.1], [wx0 + 0.3, 0, 1.1]])}" fill="#ffd54f" opacity=".14"/>`;
+  }
   if (o.cat) s += svCat(wx0, wx1, wy0, dx0, o.still);
   // awning box over the window
   s += poly([[wx0 - 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.32, 0.32], [wx0 - 0.1, wy1 + 0.32, 0.32]], "#f4f2ee");
