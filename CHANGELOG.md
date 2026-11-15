@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.4.2
+
+* How often the cat visits is now an option: `cat` takes a number from 0 to 100, the % of quarter hours it is there while someone is home (twice that when nobody is). `100`: always there. `true` stays the default (30), `false` or `0`: no cat. In the visual editor it is a slider.
+
 ## v0.4.1
 
 * The room light now shows: with the light on, the front room glows warm (amber glass, a pendant lamp with its glow, a sofa back) and the light falls on the sill and the pavement. With it off the glass is cool grey.

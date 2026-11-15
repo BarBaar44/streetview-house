@@ -7,7 +7,7 @@ Who is home, at a glance: on the left the street side of the house as a line dra
 * **A tile per person**, always in the same place, in the order of the `people` list. At home: their portrait, name and since when ("Home · 40m"). Away: name, place and since when ("Work · 5h"). Coming home: the distance in orange ("4.2 km → home").
 * **Room light and door light** are on while anyone is home, or follow real lights when you set `room_light` and `door_light`.
 * **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
-* **The cat** comes and goes: now and then it walks in along the window sill, sits for a wash and a stare, jumps down and strolls off past the door. With nobody home it is around more often.
+* **The cat** comes and goes: now and then it walks in along the window sill, sits for a wash and a stare, jumps down and strolls off past the door. It visits in about 30 % of the quarter hours while someone is home and twice as often when nobody is; set `cat` to change that.
 * **Tap** a tile: more-info of that person (map and history). Hold: optional.
 
 Read only: the card calls no services. One file, no dependencies, no card_mod.
@@ -55,7 +55,7 @@ entities:
 | `people` | the first four `person` entities | list of up to 4 (four tiles); a plain entity id is enough |
 | `entities.room_light` | none | light or switch of the room behind the window; none: on while anyone is home |
 | `entities.door_light` | none | the hall light behind the door window; none: on while anyone is home |
-| `cat` | `true` | `false`: no cat |
+| `cat` | `true` (30) | how often the cat visits: a number from 0 to 100, the % of quarter hours it is there while someone is home (twice that when nobody is, at most always). `100`: always there; `false` or `0`: no cat |
 | `tap_action` | more-info | for the person whose tile is tapped |
 | `hold_action` | none | |
 
