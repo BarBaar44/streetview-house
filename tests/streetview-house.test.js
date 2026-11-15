@@ -17,29 +17,31 @@ const MIN = 60000;
 const ago = (min) => new Date(Date.now() - min * MIN).toISOString();
 const st = (state, attributes = {}, min = 60) => ({ state: String(state), attributes, last_changed: ago(min), last_updated: ago(min) });
 
-/* Bb's household; o overrides per entity. */
+/* A made-up household; o overrides per entity. */
 const states = (o = {}) => ({
-  "person.bart_baars": st("home", { friendly_name: "Bart Baars" }, 40),
-  "person.gijs_baars": st("home", {}, 180),
-  "person.marjolijn_bongers": st("not_home", {}, 300),
-  "person.tim_baars": st("unknown", {}, 600),
-  "sensor.pixel_7_battery_level": st(55),
-  "sensor.pixel_7_battery_state": st("discharging"),
-  "sensor.pixel_6a_battery_level": st(64),
-  "sensor.pixel_6a_battery_state": st("discharging"),
-  "sensor.pixel_7_pro_battery_level": st(71),
-  "sensor.pixel_7_pro_battery_state": st("discharging"),
-  "sensor.home_bart_baars_distance": st(0, { unit_of_measurement: "km" }),
-  "sensor.home_bart_baars_direction_of_travel": st("arrived"),
+  "person.alex": st("home", { friendly_name: "Alex Jansen" }, 40),
+  "person.sam": st("home", { friendly_name: "Sam" }, 180),
+  "person.robin": st("not_home", { friendly_name: "Robin" }, 300),
+  "person.kim": st("unknown", { friendly_name: "Kim" }, 600),
+  "sensor.home_alex_distance": st(0, { unit_of_measurement: "km" }),
+  "sensor.home_alex_direction_of_travel": st("arrived"),
   ...o,
 });
+/* Their people list, in this order (the tests use the index). */
+const FAMILY = [
+  { entity: "person.alex", portrait: "/local/streetview-house/alex.webp", height: 1,
+    distance: "sensor.home_alex_distance", direction: "sensor.home_alex_direction_of_travel" },
+  { entity: "person.sam", portrait: "/local/streetview-house/sam.webp", height: 0.98 },
+  { entity: "person.robin", portrait: "/local/streetview-house/robin.webp" },
+  { entity: "person.kim", portrait: "/local/streetview-house/kim.webp", height: 0.88 },
+];
 const hass = (s) => ({ states: s, language: "en", locale: { language: "en" } });
 
 function render(s, config = {}, cat = false) {
   const c = new Card();
   w.document.body.appendChild(c);
   c._catHere = () => cat;
-  c.setConfig(config);
+  c.setConfig({ people: FAMILY, ...config });
   c.hass = hass(s);
   return c;
 }
@@ -63,11 +65,11 @@ const same = (a, b, msg) => assert.deepStrictEqual(JSON.parse(JSON.stringify(a))
 const tests = [];
 const test = (name, fn) => tests.push([name, fn]);
 
-test("empty config: Bb's four people, names, presence and since; titles for those at home", () => {
+test("people list: names, presence and since; titles for those at home", () => {
   const c = render(states());
   const r = rows(c);
-  same(titles(c), ["Bart · Home · 40 min", "Gijs · Home · 3 h"]);
-  same(r.map((x) => x.name), ["Bart", "Gijs", "Marjolijn", "Tim"]);
+  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
+  same(r.map((x) => x.name), ["Alex", "Sam", "Robin", "Kim"]);
   assert.strictEqual(r[0].line, "Home · 40 min");
   assert.strictEqual(r[1].line, "Home · 3 h");
   assert.strictEqual(r[2].line, "Away · 5 h");
@@ -83,16 +85,16 @@ test("no tracker (unknown): no presence line, not in the window", () => {
 });
 
 test("zone name and days", () => {
-  const r = rows(render(states({ "person.marjolijn_bongers": st("Work", {}, 60 * 50) })));
+  const r = rows(render(states({ "person.robin": st("Work", {}, 60 * 50) })));
   assert.strictEqual(r[2].line, "Work · 2 d");
 });
 
 test("coming home: distance and arrow in the title, door light pulses when nobody is home", () => {
   const s = states({
-    "person.bart_baars": st("not_home", {}, 120),
-    "person.gijs_baars": st("not_home", {}, 30),
-    "sensor.home_bart_baars_distance": st(12.4, { unit_of_measurement: "km" }),
-    "sensor.home_bart_baars_direction_of_travel": st("towards"),
+    "person.alex": st("not_home", {}, 120),
+    "person.sam": st("not_home", {}, 30),
+    "sensor.home_alex_distance": st(12.4, { unit_of_measurement: "km" }),
+    "sensor.home_alex_direction_of_travel": st("towards"),
   });
   const c = render(s);
   const r = rows(c);
@@ -103,20 +105,20 @@ test("coming home: distance and arrow in the title, door light pulses when nobod
 });
 
 test("coming home under 10 km keeps one decimal; away_from is just away", () => {
-  const near = rows(render(states({ "person.bart_baars": st("not_home"), "sensor.home_bart_baars_distance": st(3.64, { unit_of_measurement: "km" }), "sensor.home_bart_baars_direction_of_travel": st("towards") })));
+  const near = rows(render(states({ "person.alex": st("not_home"), "sensor.home_alex_distance": st(3.64, { unit_of_measurement: "km" }), "sensor.home_alex_direction_of_travel": st("towards") })));
   assert.strictEqual(near[0].line, "3.6 km → home");
-  const off = rows(render(states({ "person.bart_baars": st("not_home", {}, 120), "sensor.home_bart_baars_distance": st(8, { unit_of_measurement: "km" }), "sensor.home_bart_baars_direction_of_travel": st("away_from") })));
+  const off = rows(render(states({ "person.alex": st("not_home", {}, 120), "sensor.home_alex_distance": st(8, { unit_of_measurement: "km" }), "sensor.home_alex_direction_of_travel": st("away_from") })));
   assert.strictEqual(off[0].line, "Away · 2 h");
 });
 
 test("no pulse while someone is home (the door light is simply on)", () => {
-  const c = render(states({ "person.bart_baars": st("not_home"), "sensor.home_bart_baars_distance": st(5), "sensor.home_bart_baars_direction_of_travel": st("towards") }));
+  const c = render(states({ "person.alex": st("not_home"), "sensor.home_alex_distance": st(5), "sensor.home_alex_direction_of_travel": st("towards") }));
   assert(!/pulse/.test(scene(c)));
   assert(/#ffd54f/.test(scene(c)));
 });
 
 test("lights: follow presence by default, real lights when set", () => {
-  const empty = states({ "person.bart_baars": st("not_home"), "person.gijs_baars": st("not_home") });
+  const empty = states({ "person.alex": st("not_home"), "person.sam": st("not_home") });
   assert(/#1b2224/.test(scene(render(empty))), "dark room when nobody is home");
   assert(/#bfe0d6/.test(scene(render(states()))), "lit room when someone is home");
   const cfg = { entities: { room_light: "light.front_room", door_light: "light.hall" } };
@@ -127,18 +129,18 @@ test("lights: follow presence by default, real lights when set", () => {
 });
 
 test("portraits: configured file, fallback to entity_picture when it fails, plain figure without either", () => {
-  const c = render(states({ "person.gijs_baars": st("home", { entity_picture: "/api/image/gijs.jpg" }) }));
-  assert(/href="\/local\/streetview-house\/bart.webp"/.test(scene(c)));
-  c._img["/local/streetview-house/gijs.webp"] = { ok: false, w: 1, h: 1 };
+  const c = render(states({ "person.sam": st("home", { entity_picture: "/api/image/sam.jpg" }) }));
+  assert(/href="\/local\/streetview-house\/alex.webp"/.test(scene(c)));
+  c._img["/local/streetview-house/sam.webp"] = { ok: false, w: 1, h: 1 };
   c._sceneKey = null; c._update();
-  assert(/href="\/api\/image\/gijs.jpg"/.test(scene(c)));
-  const d = render(states(), { people: [{ entity: "person.bart_baars", portrait: null }] });
+  assert(/href="\/api\/image\/sam.jpg"/.test(scene(c)));
+  const d = render(states(), { people: [{ entity: "person.alex", portrait: null }] });
   assert(!/<image/.test(scene(d)) && /class="person"/.test(scene(d)));
 });
 
 test("people at home stand together in the middle, in list order, no gaps", () => {
-  const c = render(states({ "person.gijs_baars": st("not_home"), "person.tim_baars": st("home") }));
-  same(inWindow(c), [0, 3], "Bart and Tim");
+  const c = render(states({ "person.sam": st("not_home"), "person.kim": st("home") }));
+  same(inWindow(c), [0, 3], "Alex and Kim");
   const xs = [...c._el.svg.querySelectorAll(".person clipPath rect, clipPath[id$='-pc0'] rect, clipPath[id$='-pc3'] rect")];
   const clip = (i) => c._el.svg.querySelector(`clipPath[id$='-pc${i}'] rect`);
   const r0 = clip(0), r3 = clip(3);
@@ -159,7 +161,7 @@ test("the cat: there or not, in a free spot when people are home", () => {
 });
 
 test("tap on a person in the window: more-info of that person; hold off by default", () => {
-  const c = render(states({ "person.marjolijn_bongers": st("home") }));
+  const c = render(states({ "person.robin": st("home") }));
   const got = actions(c);
   const tap = (i) => {
     const el = c._el.svg.querySelector(`.person[data-i="${i}"] image`);
@@ -167,9 +169,9 @@ test("tap on a person in the window: more-info of that person; hold off by defau
     el.dispatchEvent(new w.MouseEvent("pointerup", { bubbles: true }));
   };
   tap(2);
-  same(got[0], { config: { entity: "person.marjolijn_bongers", tap_action: { action: "more-info" } }, action: "tap" });
+  same(got[0], { config: { entity: "person.robin", tap_action: { action: "more-info" } }, action: "tap" });
   tap(1);
-  assert.strictEqual(got[1].config.entity, "person.gijs_baars");
+  assert.strictEqual(got[1].config.entity, "person.sam");
   const wall = c._el.svg.querySelector("polygon");
   wall.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true, button: 0, clientX: 1, clientY: 1 }));
   wall.dispatchEvent(new w.MouseEvent("pointerup", { bubbles: true }));
@@ -190,14 +192,35 @@ test("the picture fills the card: wider shows more wall, narrower drops the door
   assert(Math.abs(narrow[0] + narrow[2] - (mid[0] + mid[2])) < 0.5 || narrow[0] + narrow[2] <= mid[0] + mid[2] + 0.5);
 });
 
-test("own people list: a known entity keeps Bb's defaults, null switches a role off, a new one has none", () => {
+test("own people list: no built-in defaults, null switches a role off", () => {
   const c = render(states({ "person.guest": st("home", { friendly_name: "Anna de Vries" }) }),
-    { people: [{ entity: "person.bart_baars", direction: null }, "person.guest"] });
+    { people: [{ entity: "person.alex", distance: "sensor.home_alex_distance", direction: null }, "person.guest"] });
   const r = rows(c);
-  same(r.map((x) => x.name), ["Bart", "Anna"]);
+  same(r.map((x) => x.name), ["Alex", "Anna"]);
   assert.strictEqual(c._config.people[0].direction, null);
-  assert.strictEqual(c._config.people[0].distance, "sensor.home_bart_baars_distance");
-  assert.strictEqual(c._config.people[1].portrait, null);
+  assert.strictEqual(c._config.people[0].distance, "sensor.home_alex_distance");
+  same(c._config.people[1], { entity: "person.guest", distance: null, direction: null, name: null, portrait: null, height: 0.95 });
+});
+
+test("no people list: the first four person entities in Home Assistant, sorted, following them", () => {
+  const c = new Card();
+  w.document.body.appendChild(c);
+  c._catHere = () => false;
+  c.setConfig({});
+  c.hass = hass(states({ "person.zoe": st("home", { friendly_name: "Zoe" }) }));
+  same(c._config.people.map((p) => p.entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
+  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
+  assert(!/<image/.test(scene(c)), "no portraits by default: plain figures");
+  const s = states();
+  delete s["person.kim"];
+  c.hass = hass(s);
+  same(c._config.people.map((p) => p.entity), ["person.alex", "person.robin", "person.sam"]);
+  c.hass = hass({ ...s, "person.sam": st("not_home") });
+  same(titles(c), ["Alex · Home · 40 min"], "still follows their states");
+  const e = new Card();
+  e.setConfig({});
+  e.hass = hass({ "sun.sun": st("above_horizon") });
+  same(e._config.people, [], "no person entities: an empty house");
 });
 
 test("re-render only when the card's own entities change", () => {
@@ -207,7 +230,7 @@ test("re-render only when the card's own entities change", () => {
   c._update = () => { n++; orig(); };
   const s = states();
   c.hass = hass({ ...s, "sun.sun": st("below_horizon") });
-  c.hass = hass({ ...c.hass.states, "person.bart_baars": st("not_home") });
+  c.hass = hass({ ...c.hass.states, "person.alex": st("not_home") });
   assert.strictEqual(n, 2, "first set with new objects counts; unrelated entity does not");
 });
 
@@ -237,19 +260,19 @@ test("size: 12 x 3", () => {
   assert.strictEqual(c.getCardSize(), 3);
 });
 
-test("editor: empty config shows the defaults and writes nothing back", () => {
+test("editor: empty config shows empty slots and writes nothing back", () => {
   const d = Editor.toData({});
-  assert.strictEqual(d.person_1.entity, "person.bart_baars");
-  assert.strictEqual(d.person_1.distance, "sensor.home_bart_baars_distance");
-  assert.strictEqual(d.person_4.entity, "person.tim_baars");
+  assert.strictEqual(d.person_1.entity, undefined);
+  same(d.person_4, {});
   assert.strictEqual(d.cat, true);
   same(Editor.toConfig(d, { type: "custom:streetview-house", grid_options: { columns: 12, rows: 3 } }),
     { type: "custom:streetview-house", grid_options: { columns: 12, rows: 3 } });
 });
 
 test("editor: changes are written as the smallest config, and every written config is accepted", () => {
-  const d = Editor.toData({});
-  d.person_1.distance = "";
+  const d = Editor.toData({ type: "custom:streetview-house", people: FAMILY });
+  assert.strictEqual(d.person_1.distance, "sensor.home_alex_distance");
+  d.person_1 = { ...d.person_1, distance: "", direction: "", portrait: "", height: 0.95 };
   d.person_2.name = "G";
   d.person_4 = {};
   d.entities.room_light = "light.front_room";
@@ -257,13 +280,15 @@ test("editor: changes are written as the smallest config, and every written conf
   const cfg = Editor.toConfig(d, { type: "custom:streetview-house" });
   same(cfg, {
     type: "custom:streetview-house",
-    people: [{ entity: "person.bart_baars", distance: null }, { entity: "person.gijs_baars", name: "G" }, "person.marjolijn_bongers"],
+    people: ["person.alex", { entity: "person.sam", name: "G", portrait: "/local/streetview-house/sam.webp", height: 0.98 },
+      { entity: "person.robin", portrait: "/local/streetview-house/robin.webp" }],
     entities: { room_light: "light.front_room" },
     cat: false,
   });
   const c = new Card();
   c.setConfig(cfg);
   same(Editor.toData(cfg).person_1.distance, "");
+  same(Editor.toConfig(Editor.toData({}), { type: "custom:streetview-house" }), { type: "custom:streetview-house" }, "no person: no list");
   same(Editor.toConfig(Editor.toData(cfg), cfg), cfg, "round trip");
 });
 

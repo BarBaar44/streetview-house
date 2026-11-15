@@ -6,6 +6,7 @@
  * light and the door light are on while anyone is home (or follow real lights);
  * the door light pulses while someone is on the way home; the cat comes and goes.
  * The picture is the whole card; hovering a person shows presence and since when.
+ * Without a people list it shows the first four person entities in Home Assistant.
  *
  * Read only: the card calls no services. Taps go through Home Assistant's own
  * action handler (hass-action), more-info of the person by default.
@@ -16,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.2.0";
+const VERSION = "0.3.0";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -24,25 +25,9 @@ const SV_TICK_MS = 60000; // "since" texts and cat visits follow the clock
 const SV_CAT_SLOT_MS = 15 * 60000; // the cat decides every quarter of an hour
 const SV_MAX_PEOPLE = 4; // the window has room for four
 
-/* Bb's household. Per person: entity, name, portrait, height (relative), phone sensors, proximity. */
-const SV_PEOPLE = [
-  {
-    entity: "person.bart_baars", name: "Bart", portrait: "/local/streetview-house/bart.webp", height: 1,
-    distance: "sensor.home_bart_baars_distance", direction: "sensor.home_bart_baars_direction_of_travel",
-  },
-  {
-    entity: "person.gijs_baars", name: "Gijs", portrait: "/local/streetview-house/gijs.webp", height: 0.98,
-    distance: null, direction: null,
-  },
-  {
-    entity: "person.marjolijn_bongers", name: "Marjolijn", portrait: "/local/streetview-house/marjolijn.webp", height: 0.93,
-    distance: null, direction: null,
-  },
-  {
-    entity: "person.tim_baars", name: "Tim", portrait: "/local/streetview-house/tim.webp", height: 0.88,
-    distance: null, direction: null,
-  },
-];
+/* Per person: entity, name, portrait, height (relative), proximity. Without a people list the
+   card takes the first four person entities in Home Assistant, sorted by entity id. */
+const SV_PERSON_DEFAULTS = { name: null, portrait: null, height: 0.95, distance: null, direction: null };
 const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "direction"];
 const SV_PERSON_ROLES = ["distance", "direction"];
 
@@ -60,7 +45,8 @@ const svKey = (v) => String(v == null ? "" : v).trim().toLowerCase();
 const svF = (n) => (Math.round(n * 100) / 100).toString();
 const svEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const svIsId = (v) => typeof v === "string" && /^[a-z0-9_]+\.[a-z0-9_]+$/.test(v);
-const svDefaultsFor = (entity) => SV_PEOPLE.find((p) => p.entity === entity) || null;
+const svAutoPeople = (hass) => Object.keys((hass && hass.states) || {})
+  .filter((id) => id.startsWith("person.")).sort().slice(0, SV_MAX_PEOPLE);
 
 /* ---- the drawing ---------------------------------------------------------- */
 
@@ -330,9 +316,10 @@ class StreetviewHouse extends HTMLElement {
     for (const k of Object.keys(c)) {
       if (!known.includes(k)) throw new Error(`Unknown option '${k}'. Known: ${known.slice(1, 6).join(", ")}`);
     }
-    // people: a list; a known entity takes Bb's defaults for the keys it leaves out, null switches a role off
-    let list = SV_PEOPLE;
-    if (c.people != null) {
+    // people: a list; without one the card follows the person entities in Home Assistant
+    let list = [];
+    this._auto = c.people == null;
+    if (!this._auto) {
       if (!Array.isArray(c.people)) throw new Error("people must be a list, e.g. - entity: person.me");
       if (c.people.length > SV_MAX_PEOPLE) throw new Error(`people: the window has room for ${SV_MAX_PEOPLE}`);
       list = c.people;
@@ -344,16 +331,15 @@ class StreetviewHouse extends HTMLElement {
         if (!SV_PERSON_KEYS.includes(k)) throw new Error(`people[${n}]: unknown key '${k}'. Known: ${SV_PERSON_KEYS.join(", ")}`);
       }
       if (!svIsId(p.entity)) throw new Error(`people[${n}].entity: '${p.entity}' is not an entity id`);
-      const def = svDefaultsFor(p.entity) || {};
       const out = { entity: p.entity };
       for (const role of SV_PERSON_ROLES) {
-        const v = role in p ? p[role] : def[role] || null;
+        const v = role in p ? p[role] : SV_PERSON_DEFAULTS[role];
         if (v !== null && v !== undefined && !svIsId(v)) throw new Error(`people[${n}].${role}: '${v}' is not an entity id (null switches it off)`);
         out[role] = v || null;
       }
-      out.name = p.name != null ? String(p.name) : def.name || null;
-      out.portrait = "portrait" in p ? (p.portrait ? String(p.portrait) : null) : def.portrait || null;
-      const h = p.height == null ? (def.height || 0.95) : svNum(p.height);
+      out.name = p.name != null ? String(p.name) : SV_PERSON_DEFAULTS.name;
+      out.portrait = p.portrait ? String(p.portrait) : SV_PERSON_DEFAULTS.portrait;
+      const h = p.height == null ? SV_PERSON_DEFAULTS.height : svNum(p.height);
       if (h === null || h < 0.5 || h > 1.2) throw new Error(`people[${n}].height must be a number from 0.5 to 1.2`);
       out.height = h;
       return out;
@@ -379,21 +365,35 @@ class StreetviewHouse extends HTMLElement {
       tap_action: c.tap_action || { action: "more-info" },
       hold_action: c.hold_action || { action: "none" },
     };
+    this._watch();
+    this._build();
+    if (this._hass) this._update();
+  }
+
+  /* Without a people list: the first four person entities, followed as they come and go. */
+  _autoPeople(hass) {
+    if (!this._auto) return false;
+    const ids = svAutoPeople(hass);
+    if (ids.join() === this._config.people.map((p) => p.entity).join()) return false;
+    this._config.people = ids.map((entity) => ({ entity, ...SV_PERSON_DEFAULTS }));
+    this._watch();
+    return true;
+  }
+
+  _watch() {
     const ids = [];
-    for (const p of people) for (const k of ["entity", ...SV_PERSON_ROLES]) if (p[k]) ids.push(p[k]);
+    for (const p of this._config.people) for (const k of ["entity", ...SV_PERSON_ROLES]) if (p[k]) ids.push(p[k]);
     for (const v of Object.values(this._config.entities)) if (v) ids.push(v);
     this._ids = ids;
     this._seen = Object.create(null);
-    this._build();
-    for (const p of people) if (p.portrait) this._loadImage(p.portrait);
-    if (this._hass) this._update();
+    for (const p of this._config.people) if (p.portrait) this._loadImage(p.portrait);
   }
 
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
     if (!this._config) return;
-    let changed = first;
+    let changed = this._autoPeople(hass) || first;
     for (const id of this._ids) {
       const s = hass.states[id];
       if (s !== this._seen[id]) { this._seen[id] = s; changed = true; }
@@ -683,18 +683,17 @@ const SV_EDITOR_LABELS = {
 class StreetviewHouseEditor extends HTMLElement {
   /* config -> form data: defaults filled in, null shown as empty. */
   static toData(config) {
-    const list = Array.isArray(config.people) ? config.people : SV_PEOPLE;
+    const list = Array.isArray(config.people) ? config.people : [];
     const data = {};
     SV_SLOTS.forEach((slot, i) => {
       let p = list[i];
       if (typeof p === "string") p = { entity: p };
       if (!p) { data[slot] = {}; return; }
-      const def = svDefaultsFor(p.entity) || {};
       const d = { entity: p.entity || "" };
-      for (const role of SV_PERSON_ROLES) d[role] = (role in p ? p[role] : def[role]) || "";
-      d.name = p.name != null ? p.name : def.name || "";
-      d.portrait = ("portrait" in p ? p.portrait : def.portrait) || "";
-      d.height = p.height != null ? svNum(p.height) : def.height || 0.95;
+      for (const role of SV_PERSON_ROLES) d[role] = p[role] || "";
+      d.name = p.name != null ? p.name : "";
+      d.portrait = p.portrait || "";
+      d.height = p.height != null ? svNum(p.height) : SV_PERSON_DEFAULTS.height;
       data[slot] = d;
     });
     const ent = config.entities || {};
@@ -706,7 +705,8 @@ class StreetviewHouseEditor extends HTMLElement {
     return data;
   }
 
-  /* form data -> config: only what differs from the defaults. A slot without a person ends the list. */
+  /* form data -> config: only what differs from the defaults. A slot without a person ends the list;
+     no person at all: no people list (the card follows the person entities in Home Assistant). */
   static toConfig(data, previous) {
     const config = { type: "custom:streetview-house" };
     const handled = ["type", "people", "entities", "cat", "tap_action", "hold_action"];
@@ -716,21 +716,15 @@ class StreetviewHouseEditor extends HTMLElement {
     for (const slot of SV_SLOTS) {
       const d = data[slot] || {};
       if (!d.entity) break;
-      const def = svDefaultsFor(d.entity) || {};
       const p = { entity: d.entity };
-      for (const role of SV_PERSON_ROLES) {
-        const v = d[role] || null;
-        if (v !== (def[role] || null)) p[role] = v;
-      }
-      if (d.name && d.name !== def.name) p.name = d.name;
-      const portrait = d.portrait || null;
-      if (portrait !== (def.portrait || null)) p.portrait = portrait;
+      for (const role of SV_PERSON_ROLES) if (d[role]) p[role] = d[role];
+      if (d.name) p.name = d.name;
+      if (d.portrait) p.portrait = d.portrait;
       const h = svNum(d.height);
-      if (h != null && h !== (def.height || 0.95)) p.height = h;
+      if (h != null && h !== SV_PERSON_DEFAULTS.height) p.height = h;
       people.push(p);
     }
-    const isDefault = people.length === SV_PEOPLE.length && people.every((p, i) => p.entity === SV_PEOPLE[i].entity && Object.keys(p).length === 1);
-    if (!isDefault) config.people = people.map((p) => (Object.keys(p).length === 1 ? p.entity : p));
+    if (people.length) config.people = people.map((p) => (Object.keys(p).length === 1 ? p.entity : p));
 
     const entities = {};
     for (const [role, def] of Object.entries(SV_DEFAULTS.entities)) {

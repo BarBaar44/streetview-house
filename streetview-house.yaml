@@ -1,4 +1,4 @@
-# Minimal: the owner's household, all defaults
+# Minimal: the first four person entities in Home Assistant
 type: custom:streetview-house
 grid_options:
   columns: 12
@@ -8,21 +8,21 @@ grid_options:
 # Full
 type: custom:streetview-house
 people:
-  - entity: person.bart_baars
-    name: Bart
-    portrait: /local/streetview-house/bart.webp
+  - entity: person.alex
+    name: Alex
+    portrait: /local/streetview-house/alex.webp
     height: 1
-    distance: sensor.home_bart_baars_distance
-    direction: sensor.home_bart_baars_direction_of_travel
-  - entity: person.gijs_baars
-    portrait: /local/streetview-house/gijs.webp
-  - entity: person.marjolijn_bongers
-    portrait: /local/streetview-house/marjolijn.webp
-  - entity: person.tim_baars
-    portrait: /local/streetview-house/tim.webp
+    distance: sensor.home_alex_distance
+    direction: sensor.home_alex_direction_of_travel
+  - entity: person.sam
+    portrait: /local/streetview-house/sam.webp
+    height: 0.97
+  - entity: person.robin
+    portrait: /local/streetview-house/robin.webp
+  - person.kim
 entities:
-  room_light: null
-  door_light: null
+  room_light: light.front_room
+  door_light: light.hall
 cat: true
 tap_action:
   action: more-info

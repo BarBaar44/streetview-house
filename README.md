@@ -9,7 +9,7 @@ Who is home, at a glance: the street side of the house as a line drawing, with t
 * **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
 * **The cat** comes and goes: with nobody home it is on the sill more often than not; with people home it drops by now and then and sits next to them.
 * **The picture is the whole card.** It fills any width: a wider card shows more wall, a narrower one keeps the window and drops the door.
-* **Hover** a person: name, presence and since when ("Bart · Home · 40 min"). **Tap**: more-info of that person (map and history). Hold: optional.
+* **Hover** a person: name, presence and since when ("Alex · Home · 40 min"). **Tap**: more-info of that person (map and history). Hold: optional.
 
 Read only: the card calls no services. One file, no dependencies, no card_mod.
 
@@ -36,7 +36,7 @@ grid_options:
   rows: 3
 ```
 
-Everything else is optional, in YAML or in the visual editor. The defaults are the owner's household; set `people` for your own.
+Everything else is optional, in YAML or in the visual editor. Without `people` the card shows the first four `person` entities in Home Assistant (sorted by entity id, plain figures or their Home Assistant pictures); set `people` to choose who, in which order, with portraits and proximity.
 
 ```yaml
 type: custom:streetview-house
@@ -53,7 +53,7 @@ entities:
 
 | Option | Default | |
 |---|---|---|
-| `people` | the owner's four | list of up to 4 (the window has room for four); a plain entity id is enough |
+| `people` | the first four `person` entities | list of up to 4 (the window has room for four); a plain entity id is enough |
 | `entities.room_light` | none | light or switch of the room behind the window; none: on while anyone is home |
 | `entities.door_light` | none | the hall light behind the door grille; none: on while anyone is home |
 | `cat` | `true` | `false`: no cat |
@@ -71,13 +71,13 @@ entities:
 | `distance` | none | proximity distance sensor |
 | `direction` | none | proximity direction of travel (`towards` means coming home: the door light pulses while nobody is home) |
 
-A known entity (one of the owner's) keeps its defaults for the keys you leave out; `null` switches a role off.
+`null` works the same as leaving a key out.
 
 ### What the hover title says
 
 | State | Title |
 |---|---|
-| `home` | Bart · Home · 40 min |
+| `home` | Alex · Home · 40 min |
 | `not_home` | only people at home are in the window |
 | `unknown` / `unavailable` (no tracker) | never in the window |
 
