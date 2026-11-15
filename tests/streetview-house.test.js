@@ -223,6 +223,34 @@ test("no people list: the first four person entities in Home Assistant, sorted, 
   same(e._config.people, [], "no person entities: an empty house");
 });
 
+test("no people list, hass set before the config: people show at once", () => {
+  const c = new Card();
+  w.document.body.appendChild(c);
+  c._catHere = () => false;
+  c.setConfig({ people: FAMILY });
+  c.hass = hass(states());
+  c.setConfig({});
+  same(c._config.people.map((p) => p.entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
+  same(titles(c), ["Alex · Home · 40 min", "Sam · Home · 3 h"]);
+});
+
+test("automatic list: scanned again only when the entity registry changes", () => {
+  const c = new Card();
+  c.setConfig({});
+  const reg = { "person.alex": {} };
+  let scans = 0;
+  const counted = (s) => new Proxy(s, { ownKeys: (t) => { scans++; return Reflect.ownKeys(t); } });
+  c.hass = { ...hass(counted(states())), entities: reg };
+  c.hass = { ...hass(counted(states({ "person.sam": st("not_home") }))), entities: reg };
+  c.hass = { ...hass(counted(states())), entities: reg };
+  assert.strictEqual(scans, 1, "same registry: one scan");
+  const s = { ...states(), "person.zoe": st("home") };
+  delete s["person.kim"];
+  c.hass = { ...hass(counted(s)), entities: { ...reg } };
+  assert.strictEqual(scans, 2, "new registry: scanned again");
+  same(c._config.people.map((p) => p.entity), ["person.alex", "person.robin", "person.sam", "person.zoe"]);
+});
+
 test("re-render only when the card's own entities change", () => {
   const c = render(states());
   let n = 0;
@@ -260,12 +288,20 @@ test("size: 12 x 3", () => {
   assert.strictEqual(c.getCardSize(), 3);
 });
 
-test("editor: empty config shows empty slots and writes nothing back", () => {
-  const d = Editor.toData({});
-  assert.strictEqual(d.person_1.entity, undefined);
-  same(d.person_4, {});
+test("editor: no people list shows the automatic people and writes nothing back", () => {
+  const h = hass(states());
+  const d = Editor.toData({}, h);
+  same([1, 2, 3, 4].map((i) => d[`person_${i}`].entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
+  assert.strictEqual(d.person_1.portrait, "");
   assert.strictEqual(d.cat, true);
-  same(Editor.toConfig(d, { type: "custom:streetview-house", grid_options: { columns: 12, rows: 3 } }),
+  same(Editor.toConfig(d, { type: "custom:streetview-house" }, h), { type: "custom:streetview-house" }, "untouched: stays automatic");
+  d.person_2 = { ...d.person_2, portrait: "/local/streetview-house/kim.webp" };
+  same(Editor.toConfig(d, { type: "custom:streetview-house" }, h).people,
+    ["person.alex", { entity: "person.kim", portrait: "/local/streetview-house/kim.webp" }, "person.robin", "person.sam"],
+    "an edit writes the full list");
+  const empty = Editor.toData({});
+  same(empty.person_1, {}, "no hass yet: empty slots");
+  same(Editor.toConfig(empty, { type: "custom:streetview-house", grid_options: { columns: 12, rows: 3 } }),
     { type: "custom:streetview-house", grid_options: { columns: 12, rows: 3 } });
 });
 

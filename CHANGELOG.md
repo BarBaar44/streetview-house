@@ -7,7 +7,7 @@ No built-in household any more.
 * Without `people` the card now shows the first four `person` entities in Home Assistant, sorted by entity id, and follows them as they are added or removed. Until now the defaults were the owner's own people.
 * **If you relied on the defaults:** set `people` in your card config (see the README).
 * Examples and tests use made-up people.
-* The visual editor starts with empty person slots when no `people` list is set.
+* Without a `people` list the visual editor shows the people the card uses; changing any of them writes the list.
 
 ## v0.2.0
 

@@ -17,7 +17,7 @@ Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owne
 ## Rules to keep
 
 * **Nothing about the owner's household in this repo:** no names, entity ids, portrait file names or photos, not in code, tests, examples or docs. The owner's people list lives in their dashboard config. Examples and tests use made-up people (Alex, Sam, Robin, Kim). Portraits live on the user's Home Assistant (`/config/www/streetview-house/`, cut out, transparent, about 360 px wide). Screenshots for the README use plain figures.
-* Without `people` the card follows the first four `person.*` entities in `hass.states`, sorted by entity id (`_autoPeople`), with the per-person defaults: no portrait, no proximity.
+* Without `people` the card follows the first four `person.*` entities in `hass.states`, sorted by entity id (`_autoPeople`), with the per-person defaults: no portrait, no proximity. `svAutoPeople` caches per `hass.entities` object (the registry), so the state scan only reruns when the registry changes; `setConfig` fills the list at once when hass is already set.
 * The picture is the whole card (the owner dropped the text column: too wide). No rows, no phone badges. Presence and since when show as the hover `<title>` of a person in the window.
 * Read only: no service calls. Taps on a person in the window go through `hass-action` with the person as entity (more-info by default; hold none); the wall does nothing.
 * Presence: `home` is home; any other state except unknown/unavailable is away (zone names shown as they are); unknown/unavailable (no tracker) is never in the window.
@@ -29,7 +29,7 @@ Marketplace (formerly HACS) dashboard card (Lovelace) for the people in the owne
 * The picture is rebuilt only when its inputs change (`_sceneKey`). Re-render only on the card's own entities plus a 60 s tick (since texts, cat).
 * Layout: 12 x 3 (184 px) by default. `_fit` (ResizeObserver) sets the viewBox to the card's aspect: wider than the facade widens it around the centre (the wall is drawn far wider and taller than any view, with a darker plinth), narrower anchors on the right (window kept, door dropped first), never narrower than `SV.narrow`; `slice` crops beyond that. Measure in a real browser at 250, 370 and 520 px after any layout change; a stub `ha-card` must not set `display` inline.
 * Every animation stops under reduced motion.
-* Visual editor on `ha-form`: four person slots (an empty slot ends the list), lights, cat, actions. Only non-defaults are written; no person in any slot writes no `people` list; unknown keys such as `grid_options` are kept.
+* Visual editor on `ha-form`: four person slots (an empty slot ends the list), lights, cat, actions. Only non-defaults are written; without a `people` list the slots show the automatic people, and leaving them untouched writes no list; unknown keys such as `grid_options` are kept.
 * The whole file sits in one block scope; `const VERSION` stays on its own line for the Release workflow.
 
 ## Releasing

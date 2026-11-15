@@ -45,8 +45,20 @@ const svKey = (v) => String(v == null ? "" : v).trim().toLowerCase();
 const svF = (n) => (Math.round(n * 100) / 100).toString();
 const svEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const svIsId = (v) => typeof v === "string" && /^[a-z0-9_]+\.[a-z0-9_]+$/.test(v);
-const svAutoPeople = (hass) => Object.keys((hass && hass.states) || {})
-  .filter((id) => id.startsWith("person.")).sort().slice(0, SV_MAX_PEOPLE);
+/*
+ * The first four person entities, sorted. Scanning every state is only redone when the entity
+ * registry (hass.entities) changes, which is when people can come or go; the result is cached
+ * per registry object. Without hass.entities (older HA, tests) it scans on every call.
+ */
+const svAutoCache = new WeakMap();
+const svAutoPeople = (hass) => {
+  if (!hass || !hass.states) return [];
+  const reg = hass.entities && typeof hass.entities === "object" ? hass.entities : null;
+  if (reg && svAutoCache.has(reg)) return svAutoCache.get(reg);
+  const ids = Object.keys(hass.states).filter((id) => id.startsWith("person.")).sort().slice(0, SV_MAX_PEOPLE);
+  if (reg) svAutoCache.set(reg, ids);
+  return ids;
+};
 
 /* ---- the drawing ---------------------------------------------------------- */
 
@@ -367,7 +379,10 @@ class StreetviewHouse extends HTMLElement {
     };
     this._watch();
     this._build();
-    if (this._hass) this._update();
+    if (this._hass) {
+      this._autoPeople(this._hass); // hass came first: fill the automatic list right away
+      this._update();
+    }
   }
 
   /* Without a people list: the first four person entities, followed as they come and go. */
@@ -682,8 +697,8 @@ const SV_EDITOR_LABELS = {
 
 class StreetviewHouseEditor extends HTMLElement {
   /* config -> form data: defaults filled in, null shown as empty. */
-  static toData(config) {
-    const list = Array.isArray(config.people) ? config.people : [];
+  static toData(config, hass) {
+    const list = Array.isArray(config.people) ? config.people : svAutoPeople(hass);
     const data = {};
     SV_SLOTS.forEach((slot, i) => {
       let p = list[i];
@@ -707,7 +722,7 @@ class StreetviewHouseEditor extends HTMLElement {
 
   /* form data -> config: only what differs from the defaults. A slot without a person ends the list;
      no person at all: no people list (the card follows the person entities in Home Assistant). */
-  static toConfig(data, previous) {
+  static toConfig(data, previous, hass) {
     const config = { type: "custom:streetview-house" };
     const handled = ["type", "people", "entities", "cat", "tap_action", "hold_action"];
     for (const [k, v] of Object.entries(previous || {})) if (!handled.includes(k)) config[k] = v;
@@ -724,7 +739,11 @@ class StreetviewHouseEditor extends HTMLElement {
       if (h != null && h !== SV_PERSON_DEFAULTS.height) p.height = h;
       people.push(p);
     }
-    if (people.length) config.people = people.map((p) => (Object.keys(p).length === 1 ? p.entity : p));
+    // the automatic people, untouched, stay automatic (no list written)
+    const auto = svAutoPeople(hass);
+    const isAuto = !Array.isArray((previous || {}).people) && people.length === auto.length
+      && people.every((p, i) => p.entity === auto[i] && Object.keys(p).length === 1);
+    if (people.length && !isAuto) config.people = people.map((p) => (Object.keys(p).length === 1 ? p.entity : p));
 
     const entities = {};
     for (const [role, def] of Object.entries(SV_DEFAULTS.entities)) {
@@ -745,6 +764,9 @@ class StreetviewHouseEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (this._form) this._form.hass = hass;
+    // without a people list the slots show the automatic people: refresh when that list changes
+    if (this._form && this._config && !Array.isArray(this._config.people)
+      && svAutoPeople(hass).join() !== this._autoKey) this._render();
   }
 
   connectedCallback() {
@@ -772,14 +794,15 @@ class StreetviewHouseEditor extends HTMLElement {
       this._form.computeLabel = (s) => SV_EDITOR_LABELS[s.name] || s.name.replace(/_/g, " ");
       this._form.addEventListener("value-changed", (e) => {
         e.stopPropagation();
-        const config = StreetviewHouseEditor.toConfig(e.detail.value, this._config);
+        const config = StreetviewHouseEditor.toConfig(e.detail.value, this._config, this._hass);
         this._config = config;
         this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
       });
       this.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.data = StreetviewHouseEditor.toData(this._config);
+    this._form.data = StreetviewHouseEditor.toData(this._config, this._hass);
+    this._autoKey = svAutoPeople(this._hass).join();
   }
 }
 
