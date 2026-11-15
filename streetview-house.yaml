@@ -1,0 +1,42 @@
+# Minimal: the owner's household, all defaults
+type: custom:streetview-house
+grid_options:
+  columns: 12
+  rows: 3
+
+---
+# Full
+type: custom:streetview-house
+people:
+  - entity: person.bart_baars
+    name: Bart
+    portrait: /local/streetview-house/bart.webp
+    height: 1
+    battery: sensor.pixel_7_battery_level
+    charging: sensor.pixel_7_battery_state
+    distance: sensor.home_bart_baars_distance
+    direction: sensor.home_bart_baars_direction_of_travel
+  - entity: person.gijs_baars
+    portrait: /local/streetview-house/gijs.webp
+    battery: sensor.pixel_6a_battery_level
+    charging: sensor.pixel_6a_battery_state
+  - entity: person.marjolijn_bongers
+    portrait: /local/streetview-house/marjolijn.webp
+    battery: sensor.pixel_7_pro_battery_level
+    charging: sensor.pixel_7_pro_battery_state
+  - entity: person.tim_baars
+    portrait: /local/streetview-house/tim.webp
+entities:
+  room_light: null
+  door_light: null
+battery_low: 20
+cat: true
+tap_action:
+  action: more-info
+hold_action:
+  action: none
+colors:
+  coming: var(--orange-color)
+grid_options:
+  columns: 12
+  rows: 3
