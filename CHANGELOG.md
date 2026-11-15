@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.4.0
+
+A new look, after the Gardenview House card: the house on the left, the people on the right.
+
+* The street facade is drawn at an angle, as a block with its side wall showing, and takes the left half of the card. The house number is gone.
+* A tile per person on the right, always in the same place: portrait, name and since when while home; place and since when while away; the distance in orange while coming home. Tap a tile for more-info.
+* Nobody stands in the window any more; the room light, the door light and the cat stay.
+* The cat walks: in along the window sill, sits for a wash and a stare, jumps down and strolls off past the door. Under reduced motion it just sits.
+* The window in the front door is taller: about 80 % of the door.
+* Shorter since texts: "40m", "3h", "2d". A person without a tracker shows "Unknown".
+* `height` now sets how big the portrait stands in its tile.
+
 ## v0.3.0
 
 No built-in household any more.
