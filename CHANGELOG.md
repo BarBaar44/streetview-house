@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.5.1
+
+* Someone whose state is unknown (no tracker, phone off) now gets their away animation too, with "Unknown" on top, when `away` is set.
+
 ## v0.5.0
 
 * Away tiles can show what someone is doing: set `away` per person to `race_bike`, `running`, `shopping` or `soccer`. Their face (portrait, Home Assistant picture or initial) sits on a small animated line art figure, with the place and since when on top; no name. Each has a mishap now and then: the race bike loses its front wheel, the runner meets a cow ("MOOOOH!"), money falls out of the shopping bags, and every third kick goes over the bar.

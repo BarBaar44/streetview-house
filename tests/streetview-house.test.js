@@ -320,9 +320,12 @@ test("away tiles: the chosen activity with their face, turned round when coming 
   const goal = render(states({ "person.kim": st("not_home") }), { people });
   const cheer = tileEls(goal)[3].querySelector(".a-cheer");
   assert(cheer && !cheer.getAttribute("transform"), "text is not mirrored when not coming home");
-  // unknown: no activity
+  // unknown: the activity too, with "Unknown" on top
   const u = render(states({ "person.sam": st("unknown") }), { people });
-  assert(!tileEls(u)[1].classList.contains("act"));
+  assert(tileEls(u)[1].classList.contains("act") && tileEls(u)[1].querySelector(".a-run"));
+  assert.strictEqual(tileEls(u)[1].querySelector(".s").textContent, "Unknown");
+  const plain = render(states({ "person.sam": st("unknown") }), { people: ["person.sam"] });
+  assert(!tileEls(plain)[0].classList.contains("act"), "without away: the plain Unknown tile");
 });
 
 test("config errors", () => {

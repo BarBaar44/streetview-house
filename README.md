@@ -75,7 +75,7 @@ entities:
 
 ### Away tiles
 
-With `away` set, someone who is away gets their face (portrait, else their Home Assistant picture, else their initial) on a small looping line art figure, with the place and since when on top (no name: there is no room above the figure; the tooltip still has it). Each has its own little mishap now and then:
+With `away` set, someone who is away (or unknown: no tracker, phone off) gets their face (portrait, else their Home Assistant picture, else their initial) on a small looping line art figure, with the place and since when on top (no name: there is no room above the figure; the tooltip still has it). Each has its own little mishap now and then:
 
 | `away` | What happens |
 |---|---|
