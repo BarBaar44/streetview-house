@@ -151,7 +151,10 @@ test("tiles: one per person in list order, in the same place whether home or not
   const c = render(states({ "person.sam": st("not_home"), "person.kim": st("home") }));
   same(tileEls(c).map((t) => Number(t.getAttribute("data-i"))), [0, 1, 2, 3]);
   same(atHome(c), [0, 3], "Alex and Kim");
-  same(tileEls(c).map((t) => t.querySelector(".n").textContent), ["Alex", "Sam", "Robin", "Kim"]);
+  const names = (k) => tileEls(k).map((t) => { const n = t.querySelector(".n"); return n && n.textContent; });
+  same(names(c), [null, "Sam", "Robin", null], "a photo says who it is: names only where there is none");
+  const plain = render(states(), { people: [{ entity: "person.alex", portrait: null }, "person.sam"] });
+  same(names(plain), ["Alex", "Sam"], "an initial is not enough: name stays");
   assert(tileEls(c)[1].querySelector(".pin"), "away: a pin before the place");
   assert.strictEqual(c._el.tiles.className, "tiles n4");
   const one = render(states(), { people: ["person.alex"] });

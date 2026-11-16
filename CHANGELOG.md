@@ -3,6 +3,7 @@
 ## v0.4.2
 
 * How often the cat visits is now an option: `cat` takes a number from 0 to 100, the % of quarter hours it is there while someone is home (twice that when nobody is). `100`: always there. `true` stays the default (30), `false` or `0`: no cat. In the visual editor it is a slider.
+* Home tiles no longer show the name: the picture says who it is. Tiles without a picture (away, or only an initial) keep the name.
 
 ## v0.4.1
 

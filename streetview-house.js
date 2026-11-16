@@ -638,18 +638,18 @@ class StreetviewHouse extends HTMLElement {
     // tiles, one per person, always in the same place
     const tiles = this._config.people.map((p, i) => {
       const x = ps[i];
-      let face = "";
+      let face = "", photo = false;
       if (x.presence === "home") {
         const im = p.portrait ? this._img[p.portrait] : null;
         const h = Math.round(92 * Math.min(1, p.height / SV_PERSON_DEFAULTS.height));
-        if (p.portrait && (!im || im.ok !== false)) face = `<div class="face" style="height:${h}%"><img src="${svEsc(p.portrait)}" alt=""></div>`;
-        else if (x.entityPicture) face = `<div class="face round"><img src="${svEsc(x.entityPicture)}" alt=""></div>`;
+        if (p.portrait && (!im || im.ok !== false)) { face = `<div class="face" style="height:${h}%"><img src="${svEsc(p.portrait)}" alt=""></div>`; photo = true; }
+        else if (x.entityPicture) { face = `<div class="face round"><img src="${svEsc(x.entityPicture)}" alt=""></div>`; photo = true; }
         else face = `<div class="face initial">${svEsc((x.name || "?").charAt(0).toUpperCase())}</div>`;
       }
       const cls = x.presence === "home" ? "home" : x.presence === "away" ? `away${x.coming ? " coming" : ""}` : "unknown";
       const pin = x.presence === "away" && !x.coming ? SV_PIN : "";
       return `<div class="tile ${cls}" data-i="${i}" tabindex="0" role="button" title="${svEsc(`${x.name} · ${x.line}`)}">${face}`
-        + `<div class="t"><div class="n">${svEsc(x.name)}</div><div class="s">${pin}${svEsc(x.line)}</div></div></div>`;
+        + `<div class="t">${photo ? "" : `<div class="n">${svEsc(x.name)}</div>`}<div class="s">${pin}${svEsc(x.line)}</div></div></div>`;
     }).join("");
     if (tiles !== this._tilesKey) {
       this._tilesKey = tiles;
