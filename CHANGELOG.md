@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.5.0
+
+* Away tiles can show what someone is doing: set `away` per person to `race_bike`, `running`, `shopping` or `soccer`. Their face (portrait, Home Assistant picture or initial) sits on a small animated line art figure, with the place and since when on top; no name. Each has a mishap now and then: the race bike loses its front wheel, the runner meets a cow ("MOOOOH!"), money falls out of the shopping bags, and every third kick goes over the bar.
+* Coming home turns the figure towards home, with the distance in orange.
+* The visual editor has a "While away" choice per person. Without `away` the tile stays as before (name, pin, place).
+* Under reduced motion the figures stand still.
+
 ## v0.4.2
 
 * How often the cat visits is now an option: `cat` takes a number from 0 to 100, the % of quarter hours it is there while someone is home (twice that when nobody is). `100`: always there. `true` stays the default (30), `false` or `0`: no cat. In the visual editor it is a slider.

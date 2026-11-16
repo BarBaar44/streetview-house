@@ -228,7 +228,7 @@ test("own people list: no built-in defaults, null switches a role off", () => {
   same(r.map((x) => x.name), ["Alex", "Anna"]);
   assert.strictEqual(c._config.people[0].direction, null);
   assert.strictEqual(c._config.people[0].distance, "sensor.home_alex_distance");
-  same(c._config.people[1], { entity: "person.guest", distance: null, direction: null, name: null, portrait: null, height: 0.95 });
+  same(c._config.people[1], { entity: "person.guest", distance: null, direction: null, name: null, portrait: null, height: 0.95, away: null });
 });
 
 test("no people list: the first four person entities in Home Assistant, sorted, following them", () => {
@@ -291,6 +291,40 @@ test("re-render only when the card's own entities change", () => {
   assert.strictEqual(n, 2, "first set with new objects counts; unrelated entity does not");
 });
 
+test("away tiles: the chosen activity with their face, turned round when coming home", () => {
+  const people = [
+    { entity: "person.alex", portrait: "/local/streetview-house/alex.webp", away: "race_bike", distance: "sensor.home_alex_distance", direction: "sensor.home_alex_direction" },
+    { entity: "person.sam", away: "running" },
+    { entity: "person.robin", away: "shopping" },
+    { entity: "person.kim", away: "soccer" },
+  ];
+  const away = states({ "person.alex": st("not_home"), "person.sam": st("Work"), "person.robin": st("not_home", { entity_picture: "/api/image/robin.jpg" }), "person.kim": st("home") });
+  const c = render(away, { people });
+  const t = tileEls(c);
+  assert(t[0].classList.contains("act") && t[0].querySelector(".a-bike .a-loose"), "race bike, front wheel that comes off");
+  assert(t[0].querySelector("image").getAttribute("href") === "/local/streetview-house/alex.webp", "their portrait as the face");
+  assert(!t[0].querySelector(".n"), "a face says who it is: no name");
+  assert(!t[0].querySelector(".pin"), "no pin on an activity tile");
+  assert(t[1].querySelector(".a-run .a-cow") && /MOOOOH!/.test(t[1].innerHTML), "running, and a cow");
+  assert(!t[1].querySelector(".n") && /<text[^>]*>S<\/text>/.test(t[1].innerHTML), "no picture: their initial on the figure, no name (no room above it)");
+  assert(/^Work · /.test(t[1].querySelector(".s").textContent), "place and since stay");
+  assert(t[2].querySelector(".a-shop .a-coin") && t[2].querySelector(".a-note"), "shopping, money falling out");
+  assert.strictEqual(t[2].querySelector("image").getAttribute("href"), "/api/image/robin.jpg", "entity_picture when there is no portrait");
+  assert(!t[3].classList.contains("act") && t[3].classList.contains("home"), "home: the portrait tile as before");
+  const ids = [...c._el.tiles.querySelectorAll("clipPath")].map((e) => e.id);
+  assert.strictEqual(new Set(ids).size, ids.length, "clip path ids are unique");
+  // coming home: the scene turns round, the text stays readable
+  const back = render(states({ "person.alex": st("not_home"), "sensor.home_alex_distance": st("12", { unit_of_measurement: "km" }), "sensor.home_alex_direction": st("towards") }), { people });
+  const b0 = tileEls(back)[0];
+  assert(b0.classList.contains("coming") && /scale\(-1 1\)/.test(b0.innerHTML), "turned towards home");
+  const goal = render(states({ "person.kim": st("not_home") }), { people });
+  const cheer = tileEls(goal)[3].querySelector(".a-cheer");
+  assert(cheer && !cheer.getAttribute("transform"), "text is not mirrored when not coming home");
+  // unknown: no activity
+  const u = render(states({ "person.sam": st("unknown") }), { people });
+  assert(!tileEls(u)[1].classList.contains("act"));
+});
+
 test("config errors", () => {
   const bad = [
     [{ foo: 1 }, /Unknown option 'foo'/],
@@ -304,6 +338,7 @@ test("config errors", () => {
     [{ people: [{ entity: "person.a", battery: "sensor.x" }] }, /unknown key 'battery'/],
     [{ cat: "yes" }, /cat must be true, false or a number/],
     [{ cat: 150 }, /cat must be true, false or a number/],
+    [{ people: [{ entity: "person.alex", away: "skydiving" }] }, /away must be one of race_bike, running, shopping, soccer/],
     [{ tap_action: "more-info" }, /tap_action must be an action/],
   ];
   for (const [config, re] of bad) {
@@ -356,6 +391,11 @@ test("editor: changes are written as the smallest config, and every written conf
   same(Editor.toData(cfg).person_1.distance, "");
   same(Editor.toConfig(Editor.toData({}), { type: "custom:streetview-house" }), { type: "custom:streetview-house" }, "no person: no list");
   same(Editor.toConfig(Editor.toData(cfg), cfg), cfg, "round trip");
+  const act = { type: "custom:streetview-house", people: [{ entity: "person.alex", away: "soccer" }, "person.sam"] };
+  const ad = Editor.toData(act);
+  assert.strictEqual(ad.person_1.away, "soccer");
+  assert.strictEqual(ad.person_2.away, "", "no activity: empty");
+  same(Editor.toConfig(ad, act), act, "away round trip");
   const often = Editor.toData({ type: "custom:streetview-house", cat: 80 });
   assert.strictEqual(often.cat, 80);
   same(Editor.toConfig(often, { type: "custom:streetview-house" }), { type: "custom:streetview-house", cat: 80 });

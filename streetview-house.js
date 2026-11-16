@@ -17,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.4.2";
+const VERSION = "0.5.0";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -27,8 +27,8 @@ const SV_MAX_PEOPLE = 4; // four tiles
 
 /* Per person: entity, name, portrait, height (relative), proximity. Without a people list the
    card takes the first four person entities in Home Assistant, sorted by entity id. */
-const SV_PERSON_DEFAULTS = { name: null, portrait: null, height: 0.95, distance: null, direction: null };
-const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "direction"];
+const SV_PERSON_DEFAULTS = { name: null, portrait: null, height: 0.95, distance: null, direction: null, away: null };
+const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "direction", "away"];
 const SV_PERSON_ROLES = ["distance", "direction"];
 
 const SV_CAT_DEFAULT = 30; // % of the quarter hours the cat visits while someone is home (twice that when nobody is)
@@ -300,6 +300,198 @@ const SV_STYLE = `
   }
 `;
 
+/* ---- away tiles: what someone is doing while away ---------------------------- */
+
+/*
+ * A small line art figure with the person's own face, in a 122 x 80 tile, looping. Each kind has
+ * its own little mishap now and then. Picked per person with `away:` in the card config; the card
+ * knows nothing about who does what.
+ */
+const SV_AWAY = ["race_bike", "running", "shopping", "soccer"];
+
+/*
+ * kind: one of SV_AWAY. face: { href } for a picture, else { initial }. id: unique per tile, for
+ * clip paths. back: coming home (the figure turned towards home; texts stay readable).
+ */
+function svAway(kind, face, id, back) {
+  const L = 'stroke="#111" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"';
+  const SKIN = "#f2c9a8";
+  let n = 0;
+  const head = (x, y, r, extra = "") => {
+    const c = `${id}-f${n++}`;
+    const inner = face.href
+      ? `<clipPath id="${c}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath><image href="${svEsc(face.href)}" x="${x - r * 1.55}" y="${y - r * 1.15}" width="${r * 3.1}" height="${r * 4.13}" preserveAspectRatio="xMidYMin slice" clip-path="url(#${c})"/>`
+      : `<circle cx="${x}" cy="${y}" r="${r}" fill="#9e9e9e"/>${txt(x, y + r * 0.38, svEsc(face.initial || "?"), `font-size="${r * 1.1}" font-weight="600" fill="#fff"`)}`;
+    return `${inner}<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="#111" stroke-width="1.2"/>${extra}`;
+  };
+  // text stays readable when the scene is turned round
+  function txt(x, y, s, attrs, cls = "") {
+    const flip = back ? ` transform="translate(${2 * x} 0) scale(-1 1)"` : "";
+    return `<text${cls ? ` class="${cls}"` : ""} x="${x}" y="${y}" text-anchor="middle" font-family="system-ui, sans-serif"${flip} ${attrs}>${s}</text>`;
+  }
+  const limb = (cls, x, y, d, col, w = 3.6, a = 35) => `<g class="a-j ${cls}" style="transform-origin:${x}px ${y}px;--a:${a}deg">`
+    + `<path d="M${x} ${y} ${d}" fill="none" stroke="#111" stroke-width="${w + 2.4}" stroke-linecap="round" stroke-linejoin="round"/>`
+    + `<path d="M${x} ${y} ${d}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+  const road = (speed) => `<path d="M-10 73 H140" stroke="#3a3a3a" stroke-width="1.2"/><g class="a-road ${speed}">`
+    + [0, 1, 2, 3, 4, 5, 6].map((i) => `<path d="M${i * 24 - 6} 76.5 h10" stroke="#555" stroke-width="1.2" stroke-linecap="round"/>`).join("") + "</g>";
+  const star = (x, y, s) => `<text x="${x}" y="${y}" font-size="${s}" fill="#ffd600" stroke="#111" stroke-width=".4">★</text>`;
+  const wheel = (x) => `<g class="a-wheel"><circle cx="${x}" cy="61" r="11" fill="none" ${L}/><path d="M${x} 50 V72 M${x - 11} 61 H${x + 11} M${x - 8} 53 L${x + 8} 69 M${x + 8} 53 L${x - 8} 69" stroke="#777" stroke-width=".7"/></g>`;
+  let s = "";
+
+  if (kind === "race_bike") {
+    // every 9 s the front wheel comes off and rolls away, the bike nose-dives, stars, the wheel rolls back
+    s = `<g class="a-bike">${road("fast")}
+      <g stroke="#666" stroke-width="1.2" stroke-linecap="round"><path d="M14 36 h-8"/><path d="M18 46 h-12"/><path d="M14 56 h-9"/></g>
+      <g class="a-dive"><g class="a-lean">${wheel(40)}
+      ${limb("a-legB", 55, 44, "l8 8 l-3 9", "#1d1d1d", 3.4, 18)}
+      <path d="M40 61 L58 61 L52 44 Z M58 61 L76 46 L52 44 M76 46 L85 61" fill="none" stroke="#e53935" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M49 43 h7" stroke="#111" stroke-width="2" stroke-linecap="round"/>
+      <path d="M76 46 l1 -4 l4 0 q3 0 2 4 q-1 3 -3 2" fill="none" stroke="#111" stroke-width="1.6" stroke-linecap="round"/>
+      <g class="a-crank"><path d="M58 61 l0 -5 M58 61 l0 5" stroke="#111" stroke-width="1.6"/><circle cx="58" cy="61" r="2.4" fill="#cfcfcf" stroke="#111"/></g>
+      <path d="M53 44 C58 36 68 34 74 37 L72 43 C66 41 60 43 57 46 Z" fill="#ffd600" ${L}/>
+      ${limb("a-legA", 55, 44, "l9 7 l-2 10", "#1d1d1d", 3.4, 18)}
+      ${limb("", 71, 38, "l5 5 l4 2", SKIN, 2.6, 0)}
+      ${head(78, 31, 8, `<path d="M69.5 29 C69.5 20 85 19 88 27 L85 28 C82 24 74 24 72 30 Z" fill="#e53935" ${L}/>`)}
+      <g class="a-oops">${star(86, 40, 9)}${star(94, 34, 7)}${star(90, 46, 6)}</g></g></g>
+      <g class="a-loose">${wheel(85)}</g></g>`;
+  } else if (kind === "running") {
+    // every 8 s a cow walks in and gets yelled at
+    s = `<g class="a-run">${road("")}<g class="a-bob">
+      ${limb("a-legB", 57, 54, "l-5 9 l3 9", "#2b2b2b", 3.4)}${limb("a-armB", 60, 39, "l-6 7 l5 5", SKIN, 2.8)}
+      <path d="M55 37 C55 36 63 35 64 37 L61 50 L54 50 Z" fill="#ff7043" ${L}/>
+      <path d="M54 49 L61 49 L62 55 L53 55 Z" fill="#2b2b2b" ${L}/>
+      ${limb("a-legA", 57, 54, "l5 8 l-2 9", "#2b2b2b", 3.4)}
+      ${head(61, 28, 9)}
+      ${limb("a-armA", 60, 39, "l6 6 l6 -3", SKIN, 2.8)}
+      <path class="a-sweat" d="M71 22 q2 3 0 4 q-2 -1 0 -4" fill="#81d4fa"/></g>
+      <g class="a-cow"><g transform="translate(100 72) scale(-1 1)">
+        <path d="M-12 -18 C-14 -18 -16 -16 -15 -13" fill="none" ${L}/>
+        <path d="M-10 -4 v4 M-6 -4 v4 M5 -4 v4 M9 -4 v4" stroke="#111" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M-13 -19 C-13 -21 9 -21 10 -19 L11 -6 C11 -4 -12 -4 -13 -6 Z" fill="#f4f2ee" ${L}/>
+        <path d="M-8 -19 c2 3 6 3 6 0 Z M2 -12 c3 -2 6 0 5 3 c-3 1 -5 0 -5 -3 Z M-12 -10 c2 0 4 2 2 4 l-2 0 Z" fill="#1d1d1d"/>
+        <g class="a-cowhead"><path d="M9 -22 C9 -26 19 -26 19 -22 L18 -14 C18 -12 10 -12 10 -14 Z" fill="#f4f2ee" ${L}/>
+        <path d="M9 -24 l-3 -3 M19 -24 l3 -3" stroke="#111" stroke-width="1.4" stroke-linecap="round"/>
+        <path d="M10 -18 C10 -16 18 -16 18 -18 L18 -13 C18 -11 10 -11 10 -13 Z" fill="#f8bbd0" ${L}/>
+        <circle cx="12" cy="-21" r=".9" fill="#111"/><circle cx="16" cy="-21" r=".9" fill="#111"/></g></g></g>
+      <g class="a-moo"><path d="M76 22 h38 a4 4 0 0 1 4 4 v7 a4 4 0 0 1 -4 4 h-38 a4 4 0 0 1 -4 -4 v-1 l-4 -2 l4 -1 v-3 a4 4 0 0 1 4 -4 Z" fill="#f4f2ee" ${L}/>
+        ${txt(95, 32.5, "MOOOOH!", 'font-size="8" font-weight="800" fill="#111"')}</g></g>`;
+  } else if (kind === "shopping") {
+    // two bags; now and then a coin drops out of one and a banknote flutters out of the other
+    const arm = (x, y, x2, y2) => `<path d="M${x} ${y} L${x2} ${y2}" fill="none" stroke="#111" stroke-width="5.4" stroke-linecap="round"/><path d="M${x} ${y} L${x2} ${y2}" fill="none" stroke="#8e44ad" stroke-width="3" stroke-linecap="round"/>`;
+    s = `<g class="a-shop">${road("slow")}<g class="a-bob">
+      ${limb("a-legB", 57, 55, "l1 9 l0 8", "#3d5a80", 3.2, 22)}
+      <g class="a-j a-bagB" style="transform-origin:51px 40px">${arm(51, 40, 46, 53)}
+        <path d="M42 56 Q46 49 50 56" fill="none" stroke="#111" stroke-width="1.2"/>
+        <path d="M40 56 L52 56 L53 69 L39 69 Z" fill="#c69c6d" ${L}/>
+        <path d="M43 56 l1 -7 l2 0 l-1 7 M48 56 l2 -9 l2 1 l-2 8" fill="#7cb342" ${L}/>
+        <g class="a-coin"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g>
+      <path d="M52 37 C52 35 62 35 63 38 L65 57 L50 57 Z" fill="#8e44ad" ${L}/>
+      ${limb("a-legA", 57, 55, "l1 9 l0 8", "#3d5a80", 3.2, 22)}
+      ${head(58, 28, 9.5)}
+      <g class="a-j a-bagA" style="transform-origin:62px 40px">${arm(62, 40, 67, 53)}
+        <path d="M63 56 Q67 49 71 56" fill="none" stroke="#111" stroke-width="1.2"/>
+        <g class="a-note"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g>
+        <path d="M61 56 L73 56 L74 69 L60 69 Z" fill="#e53935" ${L}/>
+        <path d="M64 61 h7" stroke="#f4f2ee" stroke-width="1.2"/></g></g></g>`;
+  } else if (kind === "soccer") {
+    // three kicks in 7.2 s: goal, goal, over the bar
+    const ball = (cls) => `<g class="a-ball ${cls}"><g class="a-roll"><circle cx="0" cy="0" r="3.6" fill="#f4f2ee" ${L}/><path d="M0 -1.4 l1.3 1 l-.5 1.5 h-1.6 l-.5 -1.5 Z" fill="#111"/></g></g>`;
+    s = `<g class="a-soccer"><path d="M-10 73 H140" stroke="#3a3a3a" stroke-width="1.2"/>
+      <g class="a-net"><path d="M100 46 L118 50 L118 73 L100 73" fill="none" stroke="#9b9b9b" stroke-width=".8"/>
+      <path d="M104 47 V73 M108 48 V73 M112 49 V73 M100 52 L118 55 M100 58 L118 60 M100 64 L118 65 M100 69 L118 70" stroke="#666" stroke-width=".5"/></g>
+      <path d="M100 73 V46 H104" fill="none" stroke="#f4f2ee" stroke-width="2.4" stroke-linecap="round"/>
+      ${limb("", 34, 55, "l-1 9 l0 9", SKIN, 3, 0)}
+      ${limb("a-armB", 30, 40, "l-4 6 l1 6", SKIN, 2.6, 0)}
+      <path d="M29 38 C29 36 39 36 40 38 L39 51 L30 51 Z" fill="#1e88e5" ${L}/>
+      <path d="M30 50 L39 50 L40 56 L29 56 Z" fill="#f4f2ee" ${L}/>
+      ${limb("a-kick", 36, 55, "l4 8 l4 8", SKIN, 3, 0)}
+      ${limb("a-armA", 38, 40, "l5 6 l1 6", SKIN, 2.6, 0)}
+      ${head(35, 28, 9)}
+      ${ball("a-miss")}${ball("a-goal")}
+      ${txt(76, 36, "GOAL!", 'font-size="12" font-weight="800" fill="#ffd600" stroke="#111" stroke-width=".5"', "a-cheer")}
+      ${txt(76, 36, "MISS…", 'font-size="11" font-weight="800" fill="#9b9b9b" stroke="#111" stroke-width=".4"', "a-boo")}</g>`;
+  }
+  return back ? `<g transform="translate(122 0) scale(-1 1)">${s}</g>` : s;
+}
+
+const SV_AWAY_STYLE = `
+  .tile.act .t { position: absolute; top: 6px; left: 9px; margin: 0; padding: 0; width: auto; }
+  .act-pic { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .a-j { transform-box: view-box; }
+  @keyframes a-swing { from { transform: rotate(var(--a, 35deg)); } to { transform: rotate(calc(var(--a, 35deg) * -1)); } }
+  @keyframes a-bob { 50% { transform: translateY(-1.6px); } }
+  @keyframes a-ground { to { transform: translateX(-24px); } }
+  @keyframes a-spin { to { transform: rotate(360deg); } }
+  .a-road { animation: a-ground .45s linear infinite; }
+  .a-road.slow { animation-duration: .9s; } .a-road.fast { animation-duration: .25s; }
+  .a-wheel, .a-roll { transform-box: fill-box; transform-origin: 50% 50%; animation: a-spin .45s linear infinite; }
+  .a-roll { animation-duration: .4s; }
+
+  .a-run .a-legA, .a-run .a-armB { animation: a-swing .42s ease-in-out infinite alternate; }
+  .a-run .a-legB, .a-run .a-armA { animation: a-swing .42s ease-in-out infinite alternate-reverse; }
+  .a-run .a-bob { animation: a-bob .21s ease-in-out infinite; }
+  @keyframes a-drop { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-6px, 8px); } }
+  .a-sweat { animation: a-drop 1.1s ease-in infinite; }
+  @keyframes a-cow { 0%, 66% { transform: translateX(80px); } 72%, 90% { transform: translateX(0); } 96%, 100% { transform: translateX(80px); } }
+  .a-cow { transform: translateX(80px); animation: a-cow 8s ease-in-out infinite; }
+  @keyframes a-cowhead { 0%, 76% { transform: rotate(0); } 80%, 86% { transform: rotate(-14deg); } 90%, 100% { transform: rotate(0); } }
+  .a-cowhead { transform-box: fill-box; transform-origin: 0% 100%; animation: a-cowhead 8s ease-in-out infinite; }
+  @keyframes a-moo { 0%, 72% { opacity: 0; transform: scale(.4); } 75% { opacity: 1; transform: scale(1.12); } 77%, 89% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; transform: scale(1); } }
+  .a-moo { opacity: 0; transform-box: fill-box; transform-origin: 0% 60%; animation: a-moo 8s ease-out infinite; }
+
+  .a-crank { transform-box: view-box; transform-origin: 58px 61px; animation: a-spin .6s linear infinite; }
+  @keyframes a-pedal { 0%, 100% { transform: rotate(-18deg); } 50% { transform: rotate(18deg); } }
+  .a-bike .a-legA { animation: a-pedal .6s linear infinite; }
+  .a-bike .a-legB { animation: a-pedal .6s linear infinite; animation-delay: -.3s; }
+  @keyframes a-lean { 50% { transform: translateY(.8px); } }
+  .a-lean { animation: a-lean .3s ease-in-out infinite; }
+  @keyframes a-loose { 0%, 70% { transform: none; } 82% { transform: translateX(90px); } 84%, 88% { transform: translateX(90px); opacity: 0; } 89% { transform: translateX(90px); opacity: 1; } 97%, 100% { transform: none; } }
+  .a-loose { animation: a-loose 9s ease-in infinite; }
+  @keyframes a-dive { 0%, 70% { transform: none; } 74%, 92% { transform: rotate(22deg); } 97%, 100% { transform: none; } }
+  .a-dive { transform-box: view-box; transform-origin: 40px 72px; animation: a-dive 9s cubic-bezier(.5, 0, .6, 1.6) infinite; }
+  @keyframes a-oops { 0%, 74% { opacity: 0; transform: rotate(0); } 76%, 90% { opacity: 1; } 83% { transform: rotate(25deg); } 93%, 100% { opacity: 0; transform: rotate(0); } }
+  .a-oops { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; animation: a-oops 9s linear infinite; }
+
+  .a-shop .a-legA, .a-shop .a-legB { --a: 22deg; }
+  .a-shop .a-legA { animation: a-swing .55s ease-in-out infinite alternate; }
+  .a-shop .a-legB { animation: a-swing .55s ease-in-out infinite alternate-reverse; }
+  .a-shop .a-bob { animation: a-bob .275s ease-in-out infinite; }
+  @keyframes a-bag { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
+  .a-bagA { animation: a-bag .55s ease-in-out infinite alternate; }
+  .a-bagB { animation: a-bag .55s ease-in-out infinite alternate-reverse; }
+  @keyframes a-note { 0%, 55% { transform: none; opacity: 0; } 58% { opacity: 1; transform: translate(1px, -4px) rotate(-10deg); }
+    66% { transform: translate(10px, 2px) rotate(25deg); } 74% { transform: translate(4px, 9px) rotate(-20deg); } 82% { transform: translate(14px, 15px) rotate(15deg); opacity: 1; } 92%, 100% { transform: translate(18px, 16px); opacity: 0; } }
+  .a-note { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; animation: a-note 5.5s ease-in-out infinite; }
+  @keyframes a-coin { 0%, 20% { transform: none; opacity: 0; } 22% { opacity: 1; } 30% { transform: translate(-4px, 8px); } 34% { transform: translate(-7px, 3px); } 38% { transform: translate(-10px, 8px); }
+    41% { transform: translate(-12px, 6px); } 44%, 50% { transform: translate(-14px, 8px); opacity: 1; } 56%, 100% { transform: translate(-30px, 8px); opacity: 0; } }
+  .a-coin { opacity: 0; animation: a-coin 5.5s ease-in infinite; }
+
+  @keyframes a-kick { 0%, 12% { transform: rotate(0); } 20% { transform: rotate(38deg); } 26% { transform: rotate(-48deg); } 40%, 100% { transform: rotate(0); } }
+  .a-kick { animation: a-kick 2.4s ease-in-out infinite; }
+  @keyframes a-armA { 0%, 17% { transform: rotate(0); } 20%, 27% { transform: rotate(-40deg); } 30%, 50% { transform: rotate(0); } 53%, 60% { transform: rotate(-40deg); } 63%, 100% { transform: rotate(0); } }
+  .a-soccer .a-armA { animation: a-armA 7.2s ease-in-out infinite; }
+  @keyframes a-armB { 0%, 17% { transform: rotate(0); } 20%, 27% { transform: rotate(40deg); } 30%, 50% { transform: rotate(0); } 53%, 60% { transform: rotate(40deg); } 63%, 100% { transform: rotate(0); } }
+  .a-soccer .a-armB { animation: a-armB 7.2s ease-in-out infinite; }
+  .a-ball { offset-rotate: 0deg; }
+  .a-ball.a-goal { offset-path: path("M47 70 Q76 28 108 60"); animation: a-goalball 7.2s ease-in-out infinite; }
+  @keyframes a-goalball { 0%, 8% { offset-distance: 0%; opacity: 1; } 18% { offset-distance: 100%; } 26.6% { offset-distance: 100%; opacity: 1; } 27%, 30% { offset-distance: 0%; opacity: 0; } 31% { opacity: 1; }
+    41.3% { offset-distance: 0%; } 51.6% { offset-distance: 100%; } 60% { offset-distance: 100%; opacity: 1; } 60.3%, 96% { offset-distance: 0%; opacity: 0; } 97%, 100% { offset-distance: 0%; opacity: 1; } }
+  .a-ball.a-miss { opacity: 0; offset-path: path("M47 70 Q86 0 140 14"); animation: a-missball 7.2s ease-in infinite; }
+  @keyframes a-missball { 0%, 62% { offset-distance: 0%; opacity: 0; } 63%, 74.6% { offset-distance: 0%; opacity: 1; } 86% { offset-distance: 100%; opacity: 1; } 86.5%, 100% { offset-distance: 100%; opacity: 0; } }
+  @keyframes a-net { 0%, 18% { transform: scaleX(1); } 20% { transform: scaleX(1.18); } 24%, 51.5% { transform: scaleX(1); } 53.5% { transform: scaleX(1.18); } 57%, 100% { transform: scaleX(1); } }
+  .a-net { transform-box: fill-box; transform-origin: 0% 50%; animation: a-net 7.2s ease-out infinite; }
+  @keyframes a-cheer { 0%, 18% { opacity: 0; } 20%, 26% { opacity: 1; } 29%, 51.5% { opacity: 0; } 53.5%, 59% { opacity: 1; } 62%, 100% { opacity: 0; } }
+  .a-cheer { opacity: 0; animation: a-cheer 7.2s ease-out infinite; }
+  @keyframes a-boo { 0%, 84% { opacity: 0; } 87%, 95% { opacity: 1; } 98%, 100% { opacity: 0; } }
+  .a-boo { opacity: 0; animation: a-boo 7.2s ease-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .act-pic * { animation: none !important; }
+    .a-ball.a-goal { offset-distance: 0%; }
+    .a-miss, .a-cheer, .a-boo, .a-moo, .a-oops, .a-note, .a-coin { opacity: 0 !important; }
+  }
+`;
+
 /* ---- the card ------------------------------------------------------------- */
 
 class StreetviewHouse extends HTMLElement {
@@ -356,6 +548,8 @@ class StreetviewHouse extends HTMLElement {
       const h = p.height == null ? SV_PERSON_DEFAULTS.height : svNum(p.height);
       if (h === null || h < 0.5 || h > 1.2) throw new Error(`people[${n}].height must be a number from 0.5 to 1.2`);
       out.height = h;
+      if (p.away != null && !SV_AWAY.includes(p.away)) throw new Error(`people[${n}].away must be one of ${SV_AWAY.join(", ")} (or left out)`);
+      out.away = p.away || null;
       return out;
     });
 
@@ -460,7 +654,7 @@ class StreetviewHouse extends HTMLElement {
   _build() {
     if (this._ro) { this._ro.disconnect(); this._ro = null; }
     this.shadowRoot.innerHTML = `
-      <style>${SV_STYLE}</style>
+      <style>${SV_STYLE}${SV_AWAY_STYLE}</style>
       <ha-card>
         <div class="pic" role="img"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet"></svg></div>
         <div class="tiles"></div>
@@ -639,15 +833,21 @@ class StreetviewHouse extends HTMLElement {
     const tiles = this._config.people.map((p, i) => {
       const x = ps[i];
       let face = "", photo = false;
-      if (x.presence === "home") {
-        const im = p.portrait ? this._img[p.portrait] : null;
+      const im = p.portrait ? this._img[p.portrait] : null;
+      const picture = p.portrait && (!im || im.ok !== false) ? p.portrait : x.entityPicture || null;
+      const act = x.presence === "away" && p.away ? p.away : null;
+      if (act) {
+        // what they are doing while away: their face on a little figure, no name needed with a picture
+        face = `<svg class="act-pic" viewBox="0 0 122 80" preserveAspectRatio="xMidYMax meet">${svAway(act, picture ? { href: picture } : { initial: (x.name || "?").charAt(0).toUpperCase() }, `${this._uid}-t${i}`, x.coming)}</svg>`;
+        photo = true; // the figure carries the face or the initial; no room for a name above it
+      } else if (x.presence === "home") {
         const h = Math.round(92 * Math.min(1, p.height / SV_PERSON_DEFAULTS.height));
         if (p.portrait && (!im || im.ok !== false)) { face = `<div class="face" style="height:${h}%"><img src="${svEsc(p.portrait)}" alt=""></div>`; photo = true; }
         else if (x.entityPicture) { face = `<div class="face round"><img src="${svEsc(x.entityPicture)}" alt=""></div>`; photo = true; }
         else face = `<div class="face initial">${svEsc((x.name || "?").charAt(0).toUpperCase())}</div>`;
       }
-      const cls = x.presence === "home" ? "home" : x.presence === "away" ? `away${x.coming ? " coming" : ""}` : "unknown";
-      const pin = x.presence === "away" && !x.coming ? SV_PIN : "";
+      const cls = (x.presence === "home" ? "home" : x.presence === "away" ? `away${x.coming ? " coming" : ""}` : "unknown") + (act ? " act" : "");
+      const pin = x.presence === "away" && !x.coming && !act ? SV_PIN : "";
       return `<div class="tile ${cls}" data-i="${i}" tabindex="0" role="button" title="${svEsc(`${x.name} · ${x.line}`)}">${face}`
         + `<div class="t">${photo ? "" : `<div class="n">${svEsc(x.name)}</div>`}<div class="s">${pin}${svEsc(x.line)}</div></div></div>`;
     }).join("");
@@ -676,6 +876,13 @@ const SV_EDITOR_SCHEMA = [
         { name: "height", selector: { number: { min: 0.5, max: 1.2, step: 0.01, mode: "box" } } },
       ] },
       { name: "portrait", selector: { text: {} } },
+      { name: "away", selector: { select: { mode: "dropdown", options: [
+        { value: "", label: "Name and place" },
+        { value: "race_bike", label: "Race bike (now and then a crash)" },
+        { value: "running", label: "Running (now and then a cow)" },
+        { value: "shopping", label: "Shopping (now and then money falls out)" },
+        { value: "soccer", label: "Soccer (now and then a miss)" },
+      ] } } },
       { name: "distance", selector: { entity: { domain: "sensor" } } },
       { name: "direction", selector: { entity: { domain: "sensor" } } },
     ],
@@ -708,6 +915,7 @@ const SV_EDITOR_LABELS = {
   name: "Name (empty: first name from HA)",
   height: "Portrait size in the tile",
   portrait: "Portrait (e.g. /local/streetview-house/me.webp)",
+  away: "While away",
   distance: "Distance to home",
   direction: "Direction of travel",
   room_light: "Room light (empty: on while anyone is home)",
@@ -730,6 +938,7 @@ class StreetviewHouseEditor extends HTMLElement {
       for (const role of SV_PERSON_ROLES) d[role] = p[role] || "";
       d.name = p.name != null ? p.name : "";
       d.portrait = p.portrait || "";
+      d.away = p.away || "";
       d.height = p.height != null ? svNum(p.height) : SV_PERSON_DEFAULTS.height;
       data[slot] = d;
     });
@@ -757,6 +966,7 @@ class StreetviewHouseEditor extends HTMLElement {
       for (const role of SV_PERSON_ROLES) if (d[role]) p[role] = d[role];
       if (d.name) p.name = d.name;
       if (d.portrait) p.portrait = d.portrait;
+      if (d.away) p.away = d.away;
       const h = svNum(d.height);
       if (h != null && h !== SV_PERSON_DEFAULTS.height) p.height = h;
       people.push(p);

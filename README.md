@@ -4,7 +4,7 @@ Who is home, at a glance: on the left the street side of the house as a line dra
 
 ![Streetview House](https://raw.githubusercontent.com/BarBaar44/streetview-house/main/shot.png)
 
-* **A tile per person**, always in the same place, in the order of the `people` list. At home: their portrait and since when ("Home · 40m"); the picture says who it is, so no name. Away: name, place and since when ("Work · 5h"). Coming home: the distance in orange ("4.2 km → home").
+* **A tile per person**, always in the same place, in the order of the `people` list. At home: their portrait and since when ("Home · 40m"); the picture says who it is, so no name. Away: name, place and since when ("Work · 5h"), or, with `away` set, their face on a little animated figure doing what they do while away. Coming home: the distance in orange ("4.2 km → home"), and the figure turns towards home.
 * **Room light and door light** are on while anyone is home, or follow real lights when you set `room_light` and `door_light`.
 * **Coming home:** with a proximity sensor (direction `towards`), the door light pulses while the house is still empty.
 * **The cat** comes and goes: now and then it walks in along the window sill, sits for a wash and a stare, jumps down and strolls off past the door. It visits in about 30 % of the quarter hours while someone is home and twice as often when nobody is; set `cat` to change that.
@@ -69,8 +69,22 @@ entities:
 | `height` | `0.95` | 0.5 to 1.2: how big the portrait stands in the tile (shorter people a bit smaller) |
 | `distance` | none | proximity distance sensor |
 | `direction` | none | proximity direction of travel (`towards` means coming home: the door light pulses while nobody is home) |
+| `away` | none | what the away tile shows: `race_bike`, `running`, `shopping` or `soccer` (see Away tiles); none: name, pin and place |
 
 `null` works the same as leaving a key out.
+
+### Away tiles
+
+With `away` set, someone who is away gets their face (portrait, else their Home Assistant picture, else their initial) on a small looping line art figure, with the place and since when on top (no name: there is no room above the figure; the tooltip still has it). Each has its own little mishap now and then:
+
+| `away` | What happens |
+|---|---|
+| `race_bike` | rides a race bike; every 9 s the front wheel comes off, the bike nose-dives, stars, and the wheel rolls back |
+| `running` | runs; every 8 s a cow walks in and gets a "MOOOOH!" |
+| `shopping` | walks with two shopping bags; now and then a coin drops out and a banknote flutters away |
+| `soccer` | kicks two goals, then one over the bar |
+
+Coming home turns the figure towards home. Under reduced motion the figures stand still.
 
 ### What a tile says
 
@@ -80,6 +94,7 @@ entities:
 | `not_home` | Alex, Away · 2h |
 | a zone, e.g. `Work` | Alex, Work · 5h |
 | coming home (direction `towards`, distance above 0) | Alex, 4.2 km → home (orange) |
+| away with `away` set | the figure with their face (or initial), place and since; no name |
 | `unknown` / `unavailable` (no tracker) | Alex, Unknown |
 
 ## Layout

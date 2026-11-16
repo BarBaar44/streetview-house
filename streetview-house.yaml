@@ -14,11 +14,14 @@ people:
     height: 1
     distance: sensor.home_alex_distance
     direction: sensor.home_alex_direction_of_travel
+    away: race_bike   # while away: race_bike, running, shopping or soccer
   - entity: person.sam
     portrait: /local/streetview-house/sam.webp
     height: 0.97
+    away: running
   - entity: person.robin
     portrait: /local/streetview-house/robin.webp
+    away: shopping
   - person.kim
 entities:
   room_light: light.front_room
