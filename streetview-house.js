@@ -17,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -835,7 +835,8 @@ class StreetviewHouse extends HTMLElement {
       let face = "", photo = false;
       const im = p.portrait ? this._img[p.portrait] : null;
       const picture = p.portrait && (!im || im.ok !== false) ? p.portrait : x.entityPicture || null;
-      const act = x.presence === "away" && p.away ? p.away : null;
+      // unknown (no tracker, phone off) counts as out doing their thing too
+      const act = x.presence !== "home" && p.away ? p.away : null;
       if (act) {
         // what they are doing while away: their face on a little figure, no name needed with a picture
         face = `<svg class="act-pic" viewBox="0 0 122 80" preserveAspectRatio="xMidYMax meet">${svAway(act, picture ? { href: picture } : { initial: (x.name || "?").charAt(0).toUpperCase() }, `${this._uid}-t${i}`, x.coming)}</svg>`;
