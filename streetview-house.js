@@ -17,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.4.1";
+const VERSION = "0.4.2";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -30,6 +30,8 @@ const SV_MAX_PEOPLE = 4; // four tiles
 const SV_PERSON_DEFAULTS = { name: null, portrait: null, height: 0.95, distance: null, direction: null };
 const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "direction"];
 const SV_PERSON_ROLES = ["distance", "direction"];
+
+const SV_CAT_DEFAULT = 30; // % of the quarter hours the cat visits while someone is home (twice that when nobody is)
 
 const SV_DEFAULTS = {
   cat: true,
@@ -363,7 +365,9 @@ class StreetviewHouse extends HTMLElement {
       if (!(k in SV_DEFAULTS.entities)) throw new Error(`entities: unknown role '${k}'. Known: ${Object.keys(SV_DEFAULTS.entities).join(", ")}`);
       if (v !== null && !svIsId(v)) throw new Error(`entities.${k}: '${v}' is not an entity id (null switches it off)`);
     }
-    if (c.cat != null && typeof c.cat !== "boolean") throw new Error("cat must be true or false");
+    if (c.cat != null && typeof c.cat !== "boolean" && !(typeof c.cat === "number" && c.cat >= 0 && c.cat <= 100)) {
+      throw new Error("cat must be true, false or a number from 0 to 100 (how often it visits, in %)");
+    }
     for (const k of ["tap_action", "hold_action"]) {
       if (c[k] != null && (typeof c[k] !== "object" || Array.isArray(c[k]) || !c[k].action)) {
         throw new Error(`${k} must be an action, e.g. action: more-info`);
@@ -373,7 +377,8 @@ class StreetviewHouse extends HTMLElement {
     this._config = {
       people,
       entities: { ...SV_DEFAULTS.entities, ...ent },
-      cat: c.cat == null ? SV_DEFAULTS.cat : c.cat,
+      // how often the cat visits: % of the quarter hours while someone is home
+      cat: c.cat == null || c.cat === true ? SV_CAT_DEFAULT : c.cat === false ? 0 : c.cat,
       tap_action: c.tap_action || { action: "more-info" },
       hold_action: c.hold_action || { action: "none" },
     };
@@ -587,12 +592,16 @@ class StreetviewHouse extends HTMLElement {
     return { name, presence, line, coming, entityPicture: pic };
   }
 
-  /* The cat decides every quarter of an hour: alone in the house it is there more often than not. */
+  /*
+   * The cat decides every quarter of an hour (the same answer on every screen): it visits in `cat` %
+   * of them while someone is home and twice as often when nobody is. 100: always there; 0: never.
+   */
   _catHere(alone, now) {
-    if (!this._config.cat) return false;
+    const often = this._config.cat;
+    if (!often) return false;
     const slot = Math.floor(now / SV_CAT_SLOT_MS);
-    const n = ((slot * 2654435761) >>> 0) % 10;
-    return alone ? n < 6 : n < 3;
+    const n = ((slot * 2654435761) >>> 0) % 100;
+    return n < Math.min(100, alone ? often * 2 : often);
   }
 
   _on(role) {
@@ -629,18 +638,18 @@ class StreetviewHouse extends HTMLElement {
     // tiles, one per person, always in the same place
     const tiles = this._config.people.map((p, i) => {
       const x = ps[i];
-      let face = "";
+      let face = "", photo = false;
       if (x.presence === "home") {
         const im = p.portrait ? this._img[p.portrait] : null;
         const h = Math.round(92 * Math.min(1, p.height / SV_PERSON_DEFAULTS.height));
-        if (p.portrait && (!im || im.ok !== false)) face = `<div class="face" style="height:${h}%"><img src="${svEsc(p.portrait)}" alt=""></div>`;
-        else if (x.entityPicture) face = `<div class="face round"><img src="${svEsc(x.entityPicture)}" alt=""></div>`;
+        if (p.portrait && (!im || im.ok !== false)) { face = `<div class="face" style="height:${h}%"><img src="${svEsc(p.portrait)}" alt=""></div>`; photo = true; }
+        else if (x.entityPicture) { face = `<div class="face round"><img src="${svEsc(x.entityPicture)}" alt=""></div>`; photo = true; }
         else face = `<div class="face initial">${svEsc((x.name || "?").charAt(0).toUpperCase())}</div>`;
       }
       const cls = x.presence === "home" ? "home" : x.presence === "away" ? `away${x.coming ? " coming" : ""}` : "unknown";
       const pin = x.presence === "away" && !x.coming ? SV_PIN : "";
       return `<div class="tile ${cls}" data-i="${i}" tabindex="0" role="button" title="${svEsc(`${x.name} · ${x.line}`)}">${face}`
-        + `<div class="t"><div class="n">${svEsc(x.name)}</div><div class="s">${pin}${svEsc(x.line)}</div></div></div>`;
+        + `<div class="t">${photo ? "" : `<div class="n">${svEsc(x.name)}</div>`}<div class="s">${pin}${svEsc(x.line)}</div></div></div>`;
     }).join("");
     if (tiles !== this._tilesKey) {
       this._tilesKey = tiles;
@@ -681,7 +690,7 @@ const SV_EDITOR_SCHEMA = [
       { name: "door_light", selector: { entity: { domain: ["light", "switch"] } } },
     ],
   },
-  { name: "cat", selector: { boolean: {} } },
+  { name: "cat", selector: { number: { min: 0, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } } },
   {
     type: "expandable",
     name: "",
@@ -703,7 +712,7 @@ const SV_EDITOR_LABELS = {
   direction: "Direction of travel",
   room_light: "Room light (empty: on while anyone is home)",
   door_light: "Door light (empty: on while anyone is home)",
-  cat: "Cat",
+  cat: "Cat visits (% of the time while someone is home; 0: no cat, 100: always)",
   tap_action: "Tap action (tile)",
   hold_action: "Hold action (tile)",
 };
@@ -727,7 +736,7 @@ class StreetviewHouseEditor extends HTMLElement {
     const ent = config.entities || {};
     data.entities = {};
     for (const role of Object.keys(SV_DEFAULTS.entities)) data.entities[role] = (role in ent ? ent[role] : SV_DEFAULTS.entities[role]) || "";
-    data.cat = config.cat == null ? SV_DEFAULTS.cat : !!config.cat;
+    data.cat = config.cat == null || config.cat === true ? SV_CAT_DEFAULT : config.cat === false ? 0 : svNum(config.cat);
     data.tap_action = config.tap_action;
     data.hold_action = config.hold_action;
     return data;
@@ -764,7 +773,9 @@ class StreetviewHouseEditor extends HTMLElement {
       if (v !== def) entities[role] = v;
     }
     if (Object.keys(entities).length) config.entities = entities;
-    if (data.cat === false) config.cat = false;
+    const cat = svNum(data.cat);
+    if (cat === 0) config.cat = false;
+    else if (cat != null && cat !== SV_CAT_DEFAULT) config.cat = cat;
     for (const k of ["tap_action", "hold_action"]) if (data[k] && Object.keys(data[k]).length) config[k] = data[k];
     return config;
   }

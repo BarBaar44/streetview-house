@@ -151,7 +151,10 @@ test("tiles: one per person in list order, in the same place whether home or not
   const c = render(states({ "person.sam": st("not_home"), "person.kim": st("home") }));
   same(tileEls(c).map((t) => Number(t.getAttribute("data-i"))), [0, 1, 2, 3]);
   same(atHome(c), [0, 3], "Alex and Kim");
-  same(tileEls(c).map((t) => t.querySelector(".n").textContent), ["Alex", "Sam", "Robin", "Kim"]);
+  const names = (k) => tileEls(k).map((t) => { const n = t.querySelector(".n"); return n && n.textContent; });
+  same(names(c), [null, "Sam", "Robin", null], "a photo says who it is: names only where there is none");
+  const plain = render(states(), { people: [{ entity: "person.alex", portrait: null }, "person.sam"] });
+  same(names(plain), ["Alex", "Sam"], "an initial is not enough: name stays");
   assert(tileEls(c)[1].querySelector(".pin"), "away: a pin before the place");
   assert.strictEqual(c._el.tiles.className, "tiles n4");
   const one = render(states(), { people: ["person.alex"] });
@@ -172,9 +175,19 @@ test("the cat: there or not, in a free spot when people are home", () => {
   assert(/class="cat"/.test(scene(still)) && !/animateMotion|<animate /.test(scene(still)), "reduced motion: it just sits");
   const c = render(states());
   c._catHere = Card.prototype._catHere;
-  const slots = new Set();
-  for (let q = 0; q < 40; q++) slots.add(c._catHere(true, q * 15 * MIN));
-  assert(slots.has(true) && slots.has(false), "comes and goes");
+  const count = (cfg, alone) => {
+    const k = new Card();
+    k.setConfig({ people: FAMILY, ...cfg });
+    let n = 0;
+    for (let q = 0; q < 400; q++) if (k._catHere(alone, q * 15 * MIN)) n++;
+    return n / 4; // % of 400 quarter hours
+  };
+  const home = count({}, false), alone = count({}, true);
+  assert(home > 15 && home < 45 && alone > home, `default: about 30 % home, more when nobody is (${home}, ${alone})`);
+  assert.strictEqual(count({ cat: 100 }, false), 100, "100: always there");
+  assert.strictEqual(count({ cat: 50 }, true), 100, "nobody home: twice as often, at most always");
+  assert.strictEqual(count({ cat: 0 }, true), 0, "0: never");
+  assert.strictEqual(count({ cat: true }, false), home, "true is the default");
 });
 
 test("tap on a tile: more-info of that person; hold off by default; the picture does nothing", () => {
@@ -289,7 +302,8 @@ test("config errors", () => {
     [{ entities: { lamp: "light.x" } }, /unknown role 'lamp'/],
     [{ battery_low: 20 }, /Unknown option 'battery_low'/],
     [{ people: [{ entity: "person.a", battery: "sensor.x" }] }, /unknown key 'battery'/],
-    [{ cat: "yes" }, /cat must be true or false/],
+    [{ cat: "yes" }, /cat must be true, false or a number/],
+    [{ cat: 150 }, /cat must be true, false or a number/],
     [{ tap_action: "more-info" }, /tap_action must be an action/],
   ];
   for (const [config, re] of bad) {
@@ -309,7 +323,7 @@ test("editor: no people list shows the automatic people and writes nothing back"
   const d = Editor.toData({}, h);
   same([1, 2, 3, 4].map((i) => d[`person_${i}`].entity), ["person.alex", "person.kim", "person.robin", "person.sam"]);
   assert.strictEqual(d.person_1.portrait, "");
-  assert.strictEqual(d.cat, true);
+  assert.strictEqual(d.cat, 30, "the cat shows its default rate");
   same(Editor.toConfig(d, { type: "custom:streetview-house" }, h), { type: "custom:streetview-house" }, "untouched: stays automatic");
   d.person_2 = { ...d.person_2, portrait: "/local/streetview-house/kim.webp" };
   same(Editor.toConfig(d, { type: "custom:streetview-house" }, h).people,
@@ -328,7 +342,7 @@ test("editor: changes are written as the smallest config, and every written conf
   d.person_2.name = "G";
   d.person_4 = {};
   d.entities.room_light = "light.front_room";
-  d.cat = false;
+  d.cat = 0;
   const cfg = Editor.toConfig(d, { type: "custom:streetview-house" });
   same(cfg, {
     type: "custom:streetview-house",
@@ -342,6 +356,11 @@ test("editor: changes are written as the smallest config, and every written conf
   same(Editor.toData(cfg).person_1.distance, "");
   same(Editor.toConfig(Editor.toData({}), { type: "custom:streetview-house" }), { type: "custom:streetview-house" }, "no person: no list");
   same(Editor.toConfig(Editor.toData(cfg), cfg), cfg, "round trip");
+  const often = Editor.toData({ type: "custom:streetview-house", cat: 80 });
+  assert.strictEqual(often.cat, 80);
+  same(Editor.toConfig(often, { type: "custom:streetview-house" }), { type: "custom:streetview-house", cat: 80 });
+  often.cat = 30;
+  same(Editor.toConfig(often, { type: "custom:streetview-house" }), { type: "custom:streetview-house" }, "back to the default: nothing written");
 });
 
 let failed = 0;

@@ -23,7 +23,7 @@ people:
 entities:
   room_light: light.front_room
   door_light: light.hall
-cat: true
+cat: 60          # % of the time the cat is there while someone is home; false: no cat
 tap_action:
   action: more-info
 hold_action:
