@@ -17,7 +17,7 @@
 // Everything sits in one block so the top-level names cannot clash with the
 // sister cards when the files are loaded as classic scripts.
 {
-const VERSION = "0.5.1";
+const VERSION = "0.6.0";
 
 const SV_HOLD_MS = 500;
 const SV_MOVE_PX = 8;
@@ -32,6 +32,8 @@ const SV_PERSON_KEYS = ["entity", "name", "portrait", "height", "distance", "dir
 const SV_PERSON_ROLES = ["distance", "direction"];
 
 const SV_CAT_DEFAULT = 30; // % of the quarter hours the cat visits while someone is home (twice that when nobody is)
+
+const SV_HOUSE_DEFAULT = "right";
 
 const SV_DEFAULTS = {
   cat: true,
@@ -229,7 +231,10 @@ function svScene(o, id) {
   s += poly([[wx0 - 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.32, 0.32], [wx0 - 0.1, wy1 + 0.32, 0.32]], "#f4f2ee");
   s += poly([[wx0 - 0.1, wy1 + 0.32, 0.32], [wx1 + 0.1, wy1 + 0.32, 0.32], [wx1 + 0.1, wy1 + 0.32, 0], [wx0 - 0.1, wy1 + 0.32, 0]], "#e2dfd9");
   s += poly([[wx0 - 0.1, wy1 + 0.12, 0], [wx0 - 0.1, wy1 + 0.12, 0.32], [wx0 - 0.1, wy1 + 0.32, 0.32], [wx0 - 0.1, wy1 + 0.32, 0]], "#c6c2bb");
-  return { svg: s, viewBox: SV.box(W).map(svF).join(" ") };
+  const box = SV.box(W);
+  // flip: the house seen from the right instead (mirrored about the middle of the picture); the door stays at the near corner
+  if (o.flip) s = `<g transform="translate(${svF(2 * box[0] + box[2])} 0) scale(-1 1)">${s}</g>`;
+  return { svg: s, viewBox: box.map(svF).join(" ") };
 }
 
 /* ---- styles --------------------------------------------------------------- */
@@ -238,6 +243,8 @@ const SV_STYLE = `
   ha-card {
     height: 100%; box-sizing: border-box; overflow: hidden; display: flex; align-items: stretch;
     padding: 0 var(--sv-pad, 10px) 0 0;
+  }
+  ha-card.house-right { flex-direction: row-reverse; padding: 0 0 0 var(--sv-pad, 10px);
     user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   }
   .pic { flex: none; width: 50%; height: 100%; }
@@ -517,10 +524,10 @@ class StreetviewHouse extends HTMLElement {
 
   setConfig(config) {
     const c = config || {};
-    const known = ["type", "people", "entities", "cat", "tap_action", "hold_action",
+    const known = ["type", "people", "entities", "cat", "house", "tap_action", "hold_action",
       "grid_options", "layout_options", "view_layout", "visibility", "card_mod"];
     for (const k of Object.keys(c)) {
-      if (!known.includes(k)) throw new Error(`Unknown option '${k}'. Known: ${known.slice(1, 6).join(", ")}`);
+      if (!known.includes(k)) throw new Error(`Unknown option '${k}'. Known: ${known.slice(1, 7).join(", ")}`);
     }
     // people: a list; without one the card follows the person entities in Home Assistant
     let list = [];
@@ -562,6 +569,7 @@ class StreetviewHouse extends HTMLElement {
     if (c.cat != null && typeof c.cat !== "boolean" && !(typeof c.cat === "number" && c.cat >= 0 && c.cat <= 100)) {
       throw new Error("cat must be true, false or a number from 0 to 100 (how often it visits, in %)");
     }
+    if (c.house != null && !["left", "right"].includes(c.house)) throw new Error("house must be left or right");
     for (const k of ["tap_action", "hold_action"]) {
       if (c[k] != null && (typeof c[k] !== "object" || Array.isArray(c[k]) || !c[k].action)) {
         throw new Error(`${k} must be an action, e.g. action: more-info`);
@@ -573,6 +581,8 @@ class StreetviewHouse extends HTMLElement {
       entities: { ...SV_DEFAULTS.entities, ...ent },
       // how often the cat visits: % of the quarter hours while someone is home
       cat: c.cat == null || c.cat === true ? SV_CAT_DEFAULT : c.cat === false ? 0 : c.cat,
+      // which half the house takes; the tiles take the other (default since v0.6.0: right)
+      house: c.house || SV_HOUSE_DEFAULT,
       tap_action: c.tap_action || { action: "more-info" },
       hold_action: c.hold_action || { action: "none" },
     };
@@ -655,8 +665,8 @@ class StreetviewHouse extends HTMLElement {
     if (this._ro) { this._ro.disconnect(); this._ro = null; }
     this.shadowRoot.innerHTML = `
       <style>${SV_STYLE}${SV_AWAY_STYLE}</style>
-      <ha-card>
-        <div class="pic" role="img"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMid meet"></svg></div>
+      <ha-card class="house-${this._config.house}">
+        <div class="pic" role="img"><svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="${this._config.house === "right" ? "xMaxYMid" : "xMinYMid"} meet"></svg></div>
         <div class="tiles"></div>
       </ha-card>`;
     const $ = (s) => this.shadowRoot.querySelector(s);
@@ -819,7 +829,7 @@ class StreetviewHouse extends HTMLElement {
     const door = e.door_light ? this._on("door_light") : anyHome;
 
     // picture, rebuilt only when its inputs change
-    const o = { W: this._W, lit, door, pulse: !door && !anyHome && anyComing, cat: this._catHere(!anyHome, now), still: this._still() };
+    const o = { W: this._W, lit, door, pulse: !door && !anyHome && anyComing, cat: this._catHere(!anyHome, now), still: this._still(), flip: this._config.house === "right" };
     const key = JSON.stringify(o);
     if (key !== this._sceneKey) {
       this._sceneKey = key;
@@ -898,6 +908,7 @@ const SV_EDITOR_SCHEMA = [
       { name: "door_light", selector: { entity: { domain: ["light", "switch"] } } },
     ],
   },
+  { name: "house", selector: { select: { mode: "dropdown", options: [{ value: "right", label: "Right, people on the left" }, { value: "left", label: "Left, people on the right" }] } } },
   { name: "cat", selector: { number: { min: 0, max: 100, step: 5, mode: "slider", unit_of_measurement: "%" } } },
   {
     type: "expandable",
@@ -921,6 +932,7 @@ const SV_EDITOR_LABELS = {
   direction: "Direction of travel",
   room_light: "Room light (empty: on while anyone is home)",
   door_light: "Door light (empty: on while anyone is home)",
+  house: "House",
   cat: "Cat visits (% of the time while someone is home; 0: no cat, 100: always)",
   tap_action: "Tap action (tile)",
   hold_action: "Hold action (tile)",
@@ -946,6 +958,7 @@ class StreetviewHouseEditor extends HTMLElement {
     const ent = config.entities || {};
     data.entities = {};
     for (const role of Object.keys(SV_DEFAULTS.entities)) data.entities[role] = (role in ent ? ent[role] : SV_DEFAULTS.entities[role]) || "";
+    data.house = config.house || SV_HOUSE_DEFAULT;
     data.cat = config.cat == null || config.cat === true ? SV_CAT_DEFAULT : config.cat === false ? 0 : svNum(config.cat);
     data.tap_action = config.tap_action;
     data.hold_action = config.hold_action;
@@ -956,7 +969,7 @@ class StreetviewHouseEditor extends HTMLElement {
      no person at all: no people list (the card follows the person entities in Home Assistant). */
   static toConfig(data, previous, hass) {
     const config = { type: "custom:streetview-house" };
-    const handled = ["type", "people", "entities", "cat", "tap_action", "hold_action"];
+    const handled = ["type", "people", "entities", "cat", "house", "tap_action", "hold_action"];
     for (const [k, v] of Object.entries(previous || {})) if (!handled.includes(k)) config[k] = v;
 
     const people = [];
@@ -984,6 +997,7 @@ class StreetviewHouseEditor extends HTMLElement {
       if (v !== def) entities[role] = v;
     }
     if (Object.keys(entities).length) config.entities = entities;
+    if (data.house && data.house !== SV_HOUSE_DEFAULT) config.house = data.house;
     const cat = svNum(data.cat);
     if (cat === 0) config.cat = false;
     else if (cat != null && cat !== SV_CAT_DEFAULT) config.cat = cat;
