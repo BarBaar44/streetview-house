@@ -55,6 +55,7 @@ entities:
 | `people` | the first four `person` entities | list of up to 4 (four tiles); a plain entity id is enough |
 | `entities.room_light` | none | light or switch of the room behind the window; none: on while anyone is home |
 | `entities.door_light` | none | the hall light behind the door window; none: on while anyone is home |
+| `house` | `right` | which half the house takes: `right` (people on the left) or `left` (people on the right) |
 | `cat` | `true` (30) | how often the cat visits: a number from 0 to 100, the % of quarter hours it is there while someone is home (twice that when nobody is, at most always). `100`: always there; `false` or `0`: no cat |
 | `tap_action` | more-info | for the person whose tile is tapped |
 | `hold_action` | none | |
@@ -99,7 +100,7 @@ Coming home turns the figure towards home. Under reduced motion the figures stan
 
 ## Layout
 
-12 columns by 3 rows (184 px) by default. The house takes the left half, the tiles the right half in a 2 by 2 grid. On a wide card the house gets a longer front window; on a narrow one it is drawn smaller, never cropped, and the tiles put the face on top with the name below. All animations (the cat, the door light, the reflection sliding over the glass) stop under reduced motion; the cat then just sits on the sill.
+12 columns by 3 rows (184 px) by default. The house takes the right half, the tiles the left half in a 2 by 2 grid (`house: left` swaps them). On a wide card the house gets a longer front window; on a narrow one it is drawn smaller, never cropped, and the tiles put the face on top with the name below. All animations (the cat, the door light, the reflection sliding over the glass) stop under reduced motion; the cat then just sits on the sill.
 
 ## License
 

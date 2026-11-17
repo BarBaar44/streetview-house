@@ -218,7 +218,11 @@ test("the picture: a wider half makes the house longer, a narrow one shows it wh
   const wide = vb();
   assert(Math.abs(wide[2] / wide[3] - 320 / 184) < 0.08, `fills the half: ${wide[2] / wide[3]}`);
   assert(wide[2] > narrow[2] && Math.abs(wide[0] - narrow[0]) < 0.01, "grows to the right, the corner stays");
-  assert.strictEqual(c.shadowRoot.querySelector("svg").getAttribute("preserveAspectRatio"), "xMinYMid meet", "never cropped");
+  assert.strictEqual(c.shadowRoot.querySelector("svg").getAttribute("preserveAspectRatio"), "xMaxYMid meet", "never cropped, against the card's right edge");
+  assert(c._el.card.classList.contains("house-right"), "house on the right by default, people on the left");
+  const left = render(states(), { house: "left" });
+  assert(left._el.card.classList.contains("house-left"));
+  assert.strictEqual(left._el.svg.getAttribute("preserveAspectRatio"), "xMinYMid meet");
 });
 
 test("own people list: no built-in defaults, null switches a role off", () => {
@@ -341,6 +345,7 @@ test("config errors", () => {
     [{ people: [{ entity: "person.a", battery: "sensor.x" }] }, /unknown key 'battery'/],
     [{ cat: "yes" }, /cat must be true, false or a number/],
     [{ cat: 150 }, /cat must be true, false or a number/],
+    [{ house: "top" }, /house must be left or right/],
     [{ people: [{ entity: "person.alex", away: "skydiving" }] }, /away must be one of race_bike, running, shopping, soccer/],
     [{ tap_action: "more-info" }, /tap_action must be an action/],
   ];
@@ -399,6 +404,10 @@ test("editor: changes are written as the smallest config, and every written conf
   assert.strictEqual(ad.person_1.away, "soccer");
   assert.strictEqual(ad.person_2.away, "", "no activity: empty");
   same(Editor.toConfig(ad, act), act, "away round trip");
+  const h = Editor.toData({ type: "custom:streetview-house" });
+  assert.strictEqual(h.house, "right");
+  h.house = "left";
+  same(Editor.toConfig(h, { type: "custom:streetview-house" }), { type: "custom:streetview-house", house: "left" });
   const often = Editor.toData({ type: "custom:streetview-house", cat: 80 });
   assert.strictEqual(often.cat, 80);
   same(Editor.toConfig(often, { type: "custom:streetview-house" }), { type: "custom:streetview-house", cat: 80 });
