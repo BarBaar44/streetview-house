@@ -100,7 +100,7 @@ Coming home turns the figure towards home. Under reduced motion the figures stan
 
 ## Layout
 
-12 columns by 3 rows (184 px) by default. The house takes the right half, the tiles the left half in a 2 by 2 grid (`house: left` swaps them). On a wide card the house gets a longer front window; on a narrow one it is drawn smaller, never cropped, and the tiles put the face on top with the name below. All animations (the cat, the door light, the reflection sliding over the glass) stop under reduced motion; the cat then just sits on the sill.
+12 columns by 3 rows (184 px) by default. The house takes the right half, the tiles the left half in a 2 by 2 grid (`house: left` swaps them). On the right the house is drawn mirrored, seen from the right, so the front door stays at the near corner. On a wide card the house gets a longer front window; on a narrow one it is drawn smaller, never cropped, and the tiles put the face on top with the name below. All animations (the cat, the door light, the reflection sliding over the glass) stop under reduced motion; the cat then just sits on the sill.
 
 ## License
 

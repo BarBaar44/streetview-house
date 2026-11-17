@@ -220,9 +220,11 @@ test("the picture: a wider half makes the house longer, a narrow one shows it wh
   assert(wide[2] > narrow[2] && Math.abs(wide[0] - narrow[0]) < 0.01, "grows to the right, the corner stays");
   assert.strictEqual(c.shadowRoot.querySelector("svg").getAttribute("preserveAspectRatio"), "xMaxYMid meet", "never cropped, against the card's right edge");
   assert(c._el.card.classList.contains("house-right"), "house on the right by default, people on the left");
+  assert(/^<defs>[\s\S]*<g transform="translate\([-\d.]+ 0\) scale\(-1 1\)">/.test(c._el.svg.innerHTML) || /<g transform="translate\([-\d.]+ 0\) scale\(-1 1\)">/.test(c._el.svg.innerHTML), "the drawing is mirrored too");
   const left = render(states(), { house: "left" });
   assert(left._el.card.classList.contains("house-left"));
   assert.strictEqual(left._el.svg.getAttribute("preserveAspectRatio"), "xMinYMid meet");
+  assert(!/scale\(-1 1\)/.test(left._el.svg.innerHTML), "house: left draws it as before");
 });
 
 test("own people list: no built-in defaults, null switches a role off", () => {

@@ -231,7 +231,10 @@ function svScene(o, id) {
   s += poly([[wx0 - 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.12, 0.32], [wx1 + 0.1, wy1 + 0.32, 0.32], [wx0 - 0.1, wy1 + 0.32, 0.32]], "#f4f2ee");
   s += poly([[wx0 - 0.1, wy1 + 0.32, 0.32], [wx1 + 0.1, wy1 + 0.32, 0.32], [wx1 + 0.1, wy1 + 0.32, 0], [wx0 - 0.1, wy1 + 0.32, 0]], "#e2dfd9");
   s += poly([[wx0 - 0.1, wy1 + 0.12, 0], [wx0 - 0.1, wy1 + 0.12, 0.32], [wx0 - 0.1, wy1 + 0.32, 0.32], [wx0 - 0.1, wy1 + 0.32, 0]], "#c6c2bb");
-  return { svg: s, viewBox: SV.box(W).map(svF).join(" ") };
+  const box = SV.box(W);
+  // flip: the house seen from the right instead (mirrored about the middle of the picture); the door stays at the near corner
+  if (o.flip) s = `<g transform="translate(${svF(2 * box[0] + box[2])} 0) scale(-1 1)">${s}</g>`;
+  return { svg: s, viewBox: box.map(svF).join(" ") };
 }
 
 /* ---- styles --------------------------------------------------------------- */
@@ -826,7 +829,7 @@ class StreetviewHouse extends HTMLElement {
     const door = e.door_light ? this._on("door_light") : anyHome;
 
     // picture, rebuilt only when its inputs change
-    const o = { W: this._W, lit, door, pulse: !door && !anyHome && anyComing, cat: this._catHere(!anyHome, now), still: this._still() };
+    const o = { W: this._W, lit, door, pulse: !door && !anyHome && anyComing, cat: this._catHere(!anyHome, now), still: this._still(), flip: this._config.house === "right" };
     const key = JSON.stringify(o);
     if (key !== this._sceneKey) {
       this._sceneKey = key;
