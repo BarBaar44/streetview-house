@@ -81,7 +81,7 @@ With `away` set, someone who is away (or unknown: no tracker, phone off) gets th
 |---|---|
 | `race_bike` | rides a race bike; every 9 s the front wheel comes off, the bike nose-dives, stars, and the wheel rolls back |
 | `running` | runs; every 8 s a cow walks in and gets a "MOOOOH!" |
-| `shopping` | walks with two shopping bags; now and then a coin drops out and a banknote flutters away |
+| `shopping` | walks with two shopping bags; every 7 s a bag bursts: banknotes pop out and flutter down, coins spill and bounce away |
 | `soccer` | kicks two goals, then one over the bar |
 
 Coming home turns the figure towards home. Under reduced motion the figures stand still.
