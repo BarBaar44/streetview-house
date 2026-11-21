@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.6.0
+
+* Shopping: when money falls out, it is a lot more. Every 7 s a bag bursts: seven banknotes pop out and flutter down and six coins spill and bounce; then nothing for a while.
+
 ## v0.5.1
 
 * Someone whose state is unknown (no tracker, phone off) now gets their away animation too, with "Unknown" on top, when `away` is set.
