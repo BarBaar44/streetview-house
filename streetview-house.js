@@ -391,13 +391,13 @@ function svAway(kind, face, id, back) {
         <path d="M42 56 Q46 49 50 56" fill="none" stroke="#111" stroke-width="1.2"/>
         <path d="M40 56 L52 56 L53 69 L39 69 Z" fill="#c69c6d" ${L}/>
         <path d="M43 56 l1 -7 l2 0 l-1 7 M48 56 l2 -9 l2 1 l-2 8" fill="#7cb342" ${L}/>
-        <g transform="translate(0 0)"><g class="a-coin c1"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(2 -2)"><g class="a-coin c2"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(-1 1)"><g class="a-coin c3"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(1 -1)"><g class="a-coin c4"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g></g>
+        <g transform="translate(0 0)"><g class="a-coin c1"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(2 -2)"><g class="a-coin c2"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(-1 1)"><g class="a-coin c3"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(1 -1)"><g class="a-coin c4"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(3 0)"><g class="a-coin c5"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g><g transform="translate(-2 -1)"><g class="a-coin c6"><circle cx="46" cy="66" r="2.6" fill="#ffd54f" ${L}/><path d="M46 64.6 v2.8" stroke="#b8860b" stroke-width=".8"/></g></g></g>
       <path d="M52 37 C52 35 62 35 63 38 L65 57 L50 57 Z" fill="#8e44ad" ${L}/>
       ${limb("a-legA", 57, 55, "l1 9 l0 8", "#3d5a80", 3.2, 22)}
       ${head(58, 28, 9.5)}
       <g class="a-j a-bagA" style="transform-origin:62px 40px">${arm(62, 40, 67, 53)}
         <path d="M63 56 Q67 49 71 56" fill="none" stroke="#111" stroke-width="1.2"/>
-        <g transform="translate(0 0)"><g class="a-note n1"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(-2 1)"><g class="a-note n2"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(1 -1)"><g class="a-note n3"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(-1 0)"><g class="a-note n4"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g>
+        <g transform="translate(0 0)"><g class="a-note n1"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(-2 1)"><g class="a-note n2"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(1 -1)"><g class="a-note n3"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(-1 0)"><g class="a-note n4"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(2 1)"><g class="a-note n5"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(-3 -1)"><g class="a-note n6"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g><g transform="translate(0 2)"><g class="a-note n7"><rect x="64" y="54" width="9" height="5" rx=".8" fill="#66bb6a" ${L}/><circle cx="68.5" cy="56.5" r="1.2" fill="none" stroke="#1b5e20" stroke-width=".6"/></g></g>
         <path d="M61 56 L73 56 L74 69 L60 69 Z" fill="#e53935" ${L}/>
         <path d="M64 61 h7" stroke="#f4f2ee" stroke-width="1.2"/></g></g></g>`;
   } else if (kind === "soccer") {
@@ -466,19 +466,22 @@ const SV_AWAY_STYLE = `
   @keyframes a-bag { from { transform: rotate(-9deg); } to { transform: rotate(9deg); } }
   .a-bagA { animation: a-bag .55s ease-in-out infinite alternate; }
   .a-bagB { animation: a-bag .55s ease-in-out infinite alternate-reverse; }
-  /* plenty of money: four banknotes pop out of the red bag and flutter down, four coins drop and bounce out of the paper one, all out of step */
+  /* now and then (every 7 s) a bag bursts: seven banknotes pop out and flutter down while six coins spill and bounce; then nothing for a while */
   @keyframes a-note { 0%, 40% { transform: none; opacity: 0; } 44% { opacity: 1; transform: translate(1px, -12px) rotate(-15deg); }
     55% { transform: translate(7px, -7px) rotate(25deg); } 66% { transform: translate(13px, 1px) rotate(-20deg); } 78% { transform: translate(8px, 9px) rotate(18deg); }
     88% { transform: translate(16px, 15px) rotate(-8deg); opacity: 1; } 96%, 100% { transform: translate(18px, 16px); opacity: 0; } }
   @keyframes a-note2 { 0%, 40% { transform: none; opacity: 0; } 44% { opacity: 1; transform: translate(-2px, -14px) rotate(15deg); }
     55% { transform: translate(-6px, -6px) rotate(-25deg); } 66% { transform: translate(2px, 2px) rotate(20deg); } 78% { transform: translate(12px, 8px) rotate(-15deg); }
     88% { transform: translate(6px, 15px) rotate(10deg); opacity: 1; } 96%, 100% { transform: translate(4px, 16px); opacity: 0; } }
-  .a-note { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; animation: a-note 4.4s ease-in-out infinite; }
-  .a-note.n2 { animation-name: a-note2; animation-delay: -1.1s; } .a-note.n3 { animation-delay: -2.2s; } .a-note.n4 { animation-name: a-note2; animation-delay: -3.3s; }
+  .a-note { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; animation: a-note 7s ease-in-out infinite; }
+  .a-note.n2, .a-note.n4, .a-note.n6 { animation-name: a-note2; }
+  .a-note.n2 { animation-delay: -.12s; } .a-note.n3 { animation-delay: -.3s; } .a-note.n4 { animation-delay: -.45s; }
+  .a-note.n5 { animation-delay: -.6s; } .a-note.n6 { animation-delay: -.75s; } .a-note.n7 { animation-delay: -.9s; }
   @keyframes a-coin { 0%, 20% { transform: none; opacity: 0; } 22% { opacity: 1; } 30% { transform: translate(-4px, 8px); } 34% { transform: translate(-7px, 3px); } 38% { transform: translate(-10px, 8px); }
     41% { transform: translate(-12px, 6px); } 44%, 50% { transform: translate(-14px, 8px); opacity: 1; } 56%, 100% { transform: translate(-30px, 8px); opacity: 0; } }
-  .a-coin { opacity: 0; animation: a-coin 3s ease-in infinite; }
-  .a-coin.c2 { animation-delay: -.75s; } .a-coin.c3 { animation-delay: -1.5s; } .a-coin.c4 { animation-delay: -2.25s; }
+  /* the coins come with the same burst (their keyframes start at 20 %, so they run 1.4 s later in the 7 s loop) */
+  .a-coin { opacity: 0; animation: a-coin 7s ease-in infinite; animation-delay: 1.4s; }
+  .a-coin.c2 { animation-delay: 1.5s; } .a-coin.c3 { animation-delay: 1.65s; } .a-coin.c4 { animation-delay: 1.8s; } .a-coin.c5 { animation-delay: 1.95s; } .a-coin.c6 { animation-delay: 2.1s; }
 
   @keyframes a-kick { 0%, 12% { transform: rotate(0); } 20% { transform: rotate(38deg); } 26% { transform: rotate(-48deg); } 40%, 100% { transform: rotate(0); } }
   .a-kick { animation: a-kick 2.4s ease-in-out infinite; }

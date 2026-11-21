@@ -3,7 +3,7 @@
 ## v0.6.0
 
 * The card is mirrored: the house now sits on the right half and the people on the left. The house drawing is mirrored too, seen from the right, with the front door at the near corner. New option `house: left` brings back the old layout (also in the visual editor).
-* Shopping drops a lot more money: four banknotes pop out of the bag and flutter down, and four coins drop and bounce, all out of step, so something is always falling.
+* Shopping: when money falls out, it is a lot more. Every 7 s a bag bursts: seven banknotes pop out and flutter down and six coins spill and bounce; then nothing for a while.
 
 ## v0.5.1
 
